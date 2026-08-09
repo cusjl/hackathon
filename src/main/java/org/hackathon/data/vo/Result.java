@@ -29,6 +29,10 @@ public class Result<T> {
         return build(new Result<>(200, null, "成功"));
     }
 
+    public static ResponseEntity<Result<Void>> error(Integer code, String msg) {
+        return build(new Result<>(code, null, msg));
+    }
+
     public static ResponseEntity<Result<Void>> error(ResultCode resultCode) {
         return build(new Result<>(resultCode.getCode(), null, resultCode.getMsg()));
     }

@@ -5,7 +5,6 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
-import org.hackathon.data.dto.GenerateJwtDTO;
 import org.hackathon.data.enums.ResultCode;
 import org.hackathon.exception.BusinessException;
 import org.springframework.stereotype.Component;
@@ -25,7 +24,7 @@ public class LocalJwtUtils {
         return Keys.hmacShaKeyFor(localProperties.secretKey().getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateJwt(GenerateJwtDTO dto) {
+    public String generateToken(LocalJwt dto, boolean isTemp) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("name", dto.getName());
         claims.put("isStudent", dto.getIsStudent());
@@ -34,28 +33,29 @@ public class LocalJwtUtils {
                 .claims(claims)
                 .subject(dto.getId().toString())
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + localProperties.expiration()))
+                .expiration(new Date(System.currentTimeMillis() +
+                        (isTemp ? localProperties.shortExpiration(): localProperties.expiration())))
                 .signWith(getKey())
                 .compact();
     }
 
-    public GenerateJwtDTO parseJwt(String jwt) {
+    public LocalJwt parseToken(String jwt) {
         try {
             Claims claims = Jwts.parser()
                     .verifyWith(getKey())
                     .build()
                     .parseSignedClaims(jwt)
                     .getPayload();
-            return new GenerateJwtDTO(
-                    Integer.valueOf(claims.getSubject()),  // subject 是字符串，转成 Integer
+            return new LocalJwt(
+                    Integer.valueOf(claims.getSubject()),
                     claims.get("name", String.class),
-                    claims.get("isStudent", Boolean.class),  // 防止 null
+                    claims.get("isStudent", Boolean.class),
                     claims.get("casID", String.class)
             );
         } catch (ExpiredJwtException e) {
             throw new BusinessException(ResultCode.TOKEN_EXPIRED);
         } catch (Exception e) {
-            throw new BusinessException(ResultCode.UNAUTHORIZED);
+            throw new BusinessException(ResultCode.TOKEN_UNREADABLE);
         }
     }
 }

@@ -2,9 +2,11 @@ package org.hackathon.controller;
 
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.hackathon.data.dto.GenerateJwtDTO;
+import org.hackathon.security.jwt.LocalJwt;
+import org.hackathon.data.dto.LoginDTO;
 import org.hackathon.data.dto.RegisterStudentDTO;
 import org.hackathon.data.vo.LoginVO;
 import org.hackathon.data.vo.Result;
@@ -30,6 +32,11 @@ public class AuthController {
     private final AuthService authService;
     private final LocalJwtUtils localJwtUtils;
 
+    /**
+     * 学生登陆SduPass回调接口
+     * @param code SDU统一认证登录返回的code
+     * @return 携带短时(5min)token重定向至前端首页或注册页面
+     */
     @GetMapping("/sdu-pass-jwt")
     public ResponseEntity<?> sduPassLogin(@RequestParam String code) {
         String sduPassJwt = sduPassClient.getToken(code).token();
@@ -39,15 +46,15 @@ public class AuthController {
         Integer id = authService.examineStudent(payload.casID());
         String url = "[前端url占位]";
         if (id == null) {
-            String token = localJwtUtils.generateJwt(
-                    new GenerateJwtDTO(-1, payload.name(), true, payload.casID())
+            String token = localJwtUtils.generateToken(
+                    new LocalJwt(-1, payload.name(), true, payload.casID()), true
             );
-            url += "/register#token=" + token;
+            url += "/register?token=" + token;
         } else {
-            String token = localJwtUtils.generateJwt(
-                    new GenerateJwtDTO(id, payload.name(), true, payload.casID())
+            String token = localJwtUtils.generateToken(
+                    new LocalJwt(id, payload.name(), true, payload.casID()), true
             );
-            url += "/dashboard#token=" + token;
+            url += "/dashboard?token=" + token;
         }
 
         return ResponseEntity
@@ -56,8 +63,34 @@ public class AuthController {
                 .build();
     }
 
+    /**
+     * 统一认证登录重定向token兑换接口
+     * @param token 短时token
+     * @return token及基本信息
+     */
+    @GetMapping("/exchange")
+    public ResponseEntity<Result<LoginVO>> exchangeToken(
+            @RequestParam @NotBlank(message = "token不能为空") String token
+    ) {
+        return authService.exchangeToken(token);
+    }
+    /**
+     * 学生注册
+     * @param dto 注册基本信息，含临时token，密码可选
+     * @return token及基本信息
+     */
     @PostMapping("/register")
     public ResponseEntity<Result<LoginVO>> studentRegister(@Valid @RequestBody RegisterStudentDTO dto) {
         return authService.studentRegister(dto);
+    }
+
+    /**
+     * 账号密码登录
+     * @param dto 支持学号/手机/邮箱登录
+     * @return token及基本信息
+     */
+    @PostMapping("/login")
+    public ResponseEntity<Result<LoginVO>> localLogin(@Valid @RequestBody LoginDTO dto) {
+        return authService.localLogin(dto);
     }
 }

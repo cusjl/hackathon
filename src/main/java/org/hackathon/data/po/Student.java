@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class Student {
     @TableId(type = IdType.INPUT)
-    private int id;
+    private Integer id;
     private String name;
     private String campus;
     private String major;

@@ -24,8 +24,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<Result<Void>> handleBusinessException(BusinessException e) {
         log.warn("业务异常: {}", e.getMessage());
-        ResultCode code = e.getResultCode();
-        return Result.error(code);
+        return Result.error(e.getCode(), e.getMsg());
     }
 
     // ==================== 2. 参数校验异常（@Valid） ====================
