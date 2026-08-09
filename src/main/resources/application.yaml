@@ -6,3 +6,12 @@ spring:
     username: root
     password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
+jwt:
+  local:
+    secret-key: ${HACKATHON_SECRET_KEY}
+    expiration: 3600000
+  sdupass:
+    sdu-pass-secret: ${SDU_PASS_SECRET}
+    salt: KOISHIKISHIKAWAIIKAWAIIKISSKISSLOVELY
+    iteration-cound: 114514
+    key-length: 256
