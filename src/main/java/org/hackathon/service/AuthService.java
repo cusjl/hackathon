@@ -2,6 +2,11 @@ package org.hackathon.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
+import org.hackathon.data.po.Authority;
+import org.hackathon.data.po.Event;
+import org.hackathon.data.vo.AuthorityVO;
+import org.hackathon.mapper.AuthorityMapper;
+import org.hackathon.mapper.EventMapper;
 import org.hackathon.security.jwt.LocalJwt;
 import org.hackathon.data.dto.LoginDTO;
 import org.hackathon.data.dto.RegisterStudentDTO;
@@ -20,6 +25,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +35,8 @@ public class AuthService {
     private final UserMapper userMapper;
     private final LocalJwtUtils localJwtUtils;
     private final StudentMapper studentMapper;
+    private final AuthorityMapper authorityMapper;
+    private final EventMapper eventMapper;
 
     public Integer examineStudent(String casID) {
         User user = userMapper.selectOne(
@@ -36,7 +45,7 @@ public class AuthService {
         if (user == null) {
             return null;
         }
-        return user.getId();
+        return user.getUserId();
     }
 
     private void verifyPhone(String phone) {
@@ -51,41 +60,66 @@ public class AuthService {
         }
     }
 
+    private List<AuthorityVO> getAuthorityVOList(Integer userId) {
+        List<Authority> list = authorityMapper.selectList(
+                new LambdaQueryWrapper<Authority>().eq(Authority::getUserId, userId)
+        );
+        list.sort(
+                Comparator.comparingInt(Authority::getTypeValue)
+                .thenComparing(Comparator.comparing(Authority::getCreateTime).reversed())
+        );
+        List<Integer> ids = list.stream().map(Authority::getEventId)
+                .filter(Objects::nonNull).distinct().toList();
+        Map<Integer, String> map = ids.isEmpty() ? new HashMap<>()
+                : eventMapper.selectByIds(ids).stream()
+                  .collect(Collectors.toMap(Event::getEventId, Event::getName));
+        return list.stream().map(po -> {
+            AuthorityVO vo = new AuthorityVO();
+            vo.setType(po.getType().getDesc());
+            vo.setEventId(po.getEventId());
+            if (po.getEventId() != null) {
+                vo.setEventId(po.getEventId());
+                vo.setEventName(map.get(po.getEventId()));
+            }
+            return vo;
+        }).toList();
+    }
+
     @Transactional
     public ResponseEntity<Result<LoginVO>> studentRegister(RegisterStudentDTO dto) {
         LocalJwt jwt = localJwtUtils.parseToken(dto.getToken());
-        if (examineStudent(jwt.getCasID()) != null) {
+        if (examineStudent(jwt.getCasId()) != null) {
             throw new BusinessException(ResultCode.ALREADY_REGISTERED);
         }
         verifyPhone(dto.getPhone());
         verifyEmail(dto.getEmail());
         User user = new User(
-                null, jwt.getCasID(),
+                null, jwt.getCasId(),
                 dto.getPassword() == null ? null : BCrypt.hashpw(dto.getPassword(), BCrypt.gensalt(10)),
                 true, dto.getPhone(), dto.getEmail(),
                 LocalDateTime.now(), LocalDateTime.now()
         );
         userMapper.insert(user);
         Student student = new Student(
-                user.getId(), jwt.getName(), dto.getCampus(), dto.getMajor(), null,
+                user.getUserId(), jwt.getName(), dto.getCampus(), dto.getMajor(), null,
                 LocalDateTime.now(), LocalDateTime.now()
         );
         studentMapper.insert(student);
-        jwt.setId(user.getId());
+        jwt.setUserId(user.getUserId());
         return Result.success(
                 new LoginVO(localJwtUtils.generateToken(jwt, false), jwt.getName(), true,
-                        jwt.getCasID()), "注册成功"
+                        jwt.getCasId(), List.of()), "注册成功"
         );
     }
 
     public ResponseEntity<Result<LoginVO>> exchangeToken(String temp) {
         LocalJwt jwt = localJwtUtils.parseToken(temp);
-        if (jwt.getCasID().equals(String.valueOf(-1))) {
+        if (jwt.getCasId().equals(String.valueOf(-1))) {
             throw new BusinessException(ResultCode.NOT_REGISTERED);
         }
         return Result.success(
                 new LoginVO(localJwtUtils.generateToken(jwt, false), jwt.getName(), true,
-                        jwt.getCasID()), "兑换成功"
+                        jwt.getCasId(), getAuthorityVOList(jwt.getUserId())), "兑换成功"
         );
     }
 
@@ -106,18 +140,19 @@ public class AuthService {
             throw new BusinessException(ResultCode.PASSWORD_INCORRECT);
         }
         LocalJwt jwt = new LocalJwt();
-        jwt.setId(user.getId());
+        jwt.setUserId(user.getUserId());
         jwt.setIsStudent(user.getIsStudent());
         if (user.getIsStudent()) {
-            jwt.setName(studentMapper.selectById(user.getId()).getName());
-            jwt.setCasID(user.getUsername());
+            jwt.setName(studentMapper.selectById(user.getUserId()).getName());
+            jwt.setCasId(user.getUsername());
         } else {
             jwt.setName(user.getUsername());
-            jwt.setCasID("");
+            jwt.setCasId("");
         }
         String token = localJwtUtils.generateToken(jwt, false);
         return Result.success(
-                new LoginVO(token, jwt.getName(), jwt.getIsStudent(), jwt.getCasID()), "登录成功"
+                new LoginVO(token, jwt.getName(), jwt.getIsStudent(), jwt.getCasId(),
+                        getAuthorityVOList(jwt.getUserId())), "登录成功"
         );
     }
 }

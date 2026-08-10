@@ -13,7 +13,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class User {
     @TableId(type = IdType.AUTO)
-    private Integer id;
+    private Integer userId;
+    //学生用户：学号，非学生用户：姓名
     private String username;
     private String password;
     private Boolean isStudent;
