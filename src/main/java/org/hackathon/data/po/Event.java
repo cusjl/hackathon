@@ -5,19 +5,25 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hackathon.data.enums.EventStatus;
 
 import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class Student {
-    @TableId(type = IdType.INPUT)
-    private Integer userId;
+public class Event {
+    @TableId(type = IdType.AUTO)
+    private Integer eventId;
     private String name;
-    private String campus;
-    private String major;
+    private EventStatus status;
+    private LocalDateTime regBeg;
+    private LocalDateTime regEnd;
+    private LocalDateTime liveBeg;
+    private LocalDateTime liveEnd;
     private String introduction;
+    private String tags;
+    private String notice;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

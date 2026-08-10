@@ -8,8 +8,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class LocalJwt {
-    private Integer id;
+    private Integer userId;
     private String name;
     private Boolean isStudent;
-    private String casID;
+    private String casId;
 }

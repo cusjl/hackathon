@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.hackathon.data.enums.ResultCode;
 import org.hackathon.exception.BusinessException;
@@ -24,14 +25,14 @@ public class LocalJwtUtils {
         return Keys.hmacShaKeyFor(localProperties.secretKey().getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(LocalJwt dto, boolean isTemp) {
+    public String generateToken(LocalJwt jwt, boolean isTemp) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("name", dto.getName());
-        claims.put("isStudent", dto.getIsStudent());
-        claims.put("casID", dto.getCasID());
+        claims.put("name", jwt.getName());
+        claims.put("isStudent", jwt.getIsStudent());
+        claims.put("casId", jwt.getCasId());
         return Jwts.builder()
                 .claims(claims)
-                .subject(dto.getId().toString())
+                .subject(jwt.getUserId().toString())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() +
                         (isTemp ? localProperties.shortExpiration(): localProperties.expiration())))
@@ -50,12 +51,30 @@ public class LocalJwtUtils {
                     Integer.valueOf(claims.getSubject()),
                     claims.get("name", String.class),
                     claims.get("isStudent", Boolean.class),
-                    claims.get("casID", String.class)
+                    claims.get("casId", String.class)
             );
         } catch (ExpiredJwtException e) {
             throw new BusinessException(ResultCode.TOKEN_EXPIRED);
         } catch (Exception e) {
             throw new BusinessException(ResultCode.TOKEN_UNREADABLE);
         }
+    }
+
+    public LocalJwt extractJwt(HttpServletRequest request) {
+        String token = request.getHeader("Authorization");
+        if (token == null) {
+            throw new BusinessException(ResultCode.TOKEN_IS_BLANK);
+        }
+        if (token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+        if (token.isBlank()) {
+            throw new BusinessException(ResultCode.TOKEN_IS_BLANK);
+        }
+        LocalJwt jwt = parseToken(token);
+        if (jwt.getUserId() == -1) {
+            throw new BusinessException(ResultCode.NOT_REGISTERED);
+        }
+        return jwt;
     }
 }

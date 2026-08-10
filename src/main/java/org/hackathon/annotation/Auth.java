@@ -8,4 +8,6 @@ import java.lang.annotation.Target;
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Auth {
+    boolean onlyStudent() default false;
+    boolean onlySuper() default false;
 }
