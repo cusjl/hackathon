@@ -7,8 +7,6 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 @Getter
 public enum ResultCode {
-    SUCCESS(200, HttpStatus.OK, "成功"),
-
     UNAUTHORIZED(1000, HttpStatus.UNAUTHORIZED, "用户无权限"),
     TOKEN_UNREADABLE(1001, HttpStatus.UNAUTHORIZED, "token校验失败"),
     TOKEN_EXPIRED(1002, HttpStatus.UNAUTHORIZED, "token过期"),
@@ -30,19 +28,10 @@ public enum ResultCode {
 
     INTERNAL_ERROR(5000, HttpStatus.INTERNAL_SERVER_ERROR, "系统内部错误"),
 
-    RESULT_CODE_NOT_FOUND(9999, HttpStatus.NOT_FOUND, "出现未定义业务码"),
     ;
 
-    private final Integer code;         //唯一业务码
+    private final Integer code;         //业务码
     private final HttpStatus status;
     private final String msg;
 
-    public static ResultCode fromCode(Integer code) {
-        for (ResultCode resultCode : ResultCode.values()) {
-            if (resultCode.code.equals(code)) {
-                return resultCode;
-            }
-        }
-        return RESULT_CODE_NOT_FOUND;
-    }
 }
