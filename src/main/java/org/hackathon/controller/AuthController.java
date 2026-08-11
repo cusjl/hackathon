@@ -5,9 +5,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hackathon.data.dto.SduPassTestDTO;
 import org.hackathon.security.jwt.LocalJwt;
 import org.hackathon.data.dto.LoginDTO;
-import org.hackathon.data.dto.RegisterStudentDTO;
 import org.hackathon.data.vo.LoginVO;
 import org.hackathon.data.vo.Result;
 import org.hackathon.security.jwt.LocalJwtUtils;
@@ -33,7 +33,20 @@ public class AuthController {
     private final LocalJwtUtils localJwtUtils;
 
     /**
-     * 学生登陆SduPass回调接口
+     * 生成临时token（仅测试）
+     * @param dto payload信息
+     * @return 临时token
+     */
+    @PostMapping("/test")
+    public ResponseEntity<Result<String>> getTempToken(@RequestBody @Valid SduPassTestDTO dto) {
+        Integer id = authService.examineStudent(dto.getCasId());
+        id = id == null ? -1 : id;
+        LocalJwt jwt = new LocalJwt(id, dto.getName(), true, dto.getCasId());
+        return Result.success(localJwtUtils.generateToken(jwt, true), "生成成功");
+    }
+
+    /**
+     * SduPass回调接口
      * @param code SDU统一认证登录返回的code
      * @return 携带短时(5min)token重定向至前端首页或注册页面
      */
@@ -64,7 +77,7 @@ public class AuthController {
     }
 
     /**
-     * 统一认证登录重定向token兑换接口
+     * token兑换
      * @param token 短时token
      * @return token及基本信息
      */
@@ -72,16 +85,7 @@ public class AuthController {
     public ResponseEntity<Result<LoginVO>> exchangeToken(
             @RequestParam @NotBlank(message = "token不能为空") String token
     ) {
-        return authService.exchangeToken(token);
-    }
-    /**
-     * 学生注册
-     * @param dto 注册基本信息，含临时token，密码可选
-     * @return token及基本信息
-     */
-    @PostMapping("/register")
-    public ResponseEntity<Result<LoginVO>> studentRegister(@Valid @RequestBody RegisterStudentDTO dto) {
-        return authService.studentRegister(dto);
+        return Result.success(authService.exchangeToken(token), "兑换成功");
     }
 
     /**
@@ -91,6 +95,6 @@ public class AuthController {
      */
     @PostMapping("/login")
     public ResponseEntity<Result<LoginVO>> localLogin(@Valid @RequestBody LoginDTO dto) {
-        return authService.localLogin(dto);
+        return Result.success(authService.localLogin(dto), "登录成功");
     }
 }

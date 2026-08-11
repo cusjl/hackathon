@@ -7,6 +7,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -18,6 +20,14 @@ public class Student {
     private String campus;
     private String major;
     private String introduction;
+    private String tags;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
+
+    public List<String> getTagsAsList() {
+        if (tags == null || tags.isEmpty()) {
+            return List.of();
+        }
+        return Arrays.asList(tags.split(","));
+    }
 }

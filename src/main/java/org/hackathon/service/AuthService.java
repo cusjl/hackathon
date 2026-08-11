@@ -9,22 +9,16 @@ import org.hackathon.mapper.AuthorityMapper;
 import org.hackathon.mapper.EventMapper;
 import org.hackathon.security.jwt.LocalJwt;
 import org.hackathon.data.dto.LoginDTO;
-import org.hackathon.data.dto.RegisterStudentDTO;
 import org.hackathon.data.enums.ResultCode;
-import org.hackathon.data.po.Student;
 import org.hackathon.data.po.User;
 import org.hackathon.data.vo.LoginVO;
-import org.hackathon.data.vo.Result;
 import org.hackathon.exception.BusinessException;
 import org.hackathon.mapper.StudentMapper;
 import org.hackathon.mapper.UserMapper;
 import org.hackathon.security.jwt.LocalJwtUtils;
 import org.mindrot.jbcrypt.BCrypt;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -46,18 +40,6 @@ public class AuthService {
             return null;
         }
         return user.getUserId();
-    }
-
-    private void verifyPhone(String phone) {
-        if (userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getPhone, phone)) > 0) {
-            throw new BusinessException(ResultCode.PHONE_CONFLICT);
-        }
-    }
-
-    private void verifyEmail(String email) {
-        if (userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getEmail, email)) > 0) {
-            throw new BusinessException(ResultCode.EMAIL_CONFLICT);
-        }
     }
 
     private List<AuthorityVO> getAuthorityVOList(Integer userId) {
@@ -85,45 +67,18 @@ public class AuthService {
         }).toList();
     }
 
-    @Transactional
-    public ResponseEntity<Result<LoginVO>> studentRegister(RegisterStudentDTO dto) {
-        LocalJwt jwt = localJwtUtils.parseToken(dto.getToken());
-        if (examineStudent(jwt.getCasId()) != null) {
-            throw new BusinessException(ResultCode.ALREADY_REGISTERED);
-        }
-        verifyPhone(dto.getPhone());
-        verifyEmail(dto.getEmail());
-        User user = new User(
-                null, jwt.getCasId(),
-                dto.getPassword() == null ? null : BCrypt.hashpw(dto.getPassword(), BCrypt.gensalt(10)),
-                true, dto.getPhone(), dto.getEmail(),
-                LocalDateTime.now(), LocalDateTime.now()
-        );
-        userMapper.insert(user);
-        Student student = new Student(
-                user.getUserId(), jwt.getName(), dto.getCampus(), dto.getMajor(), null,
-                LocalDateTime.now(), LocalDateTime.now()
-        );
-        studentMapper.insert(student);
-        jwt.setUserId(user.getUserId());
-        return Result.success(
-                new LoginVO(localJwtUtils.generateToken(jwt, false), jwt.getName(), true,
-                        jwt.getCasId(), List.of()), "注册成功"
-        );
-    }
-
-    public ResponseEntity<Result<LoginVO>> exchangeToken(String temp) {
+    public LoginVO exchangeToken(String temp) {
         LocalJwt jwt = localJwtUtils.parseToken(temp);
-        if (jwt.getCasId().equals(String.valueOf(-1))) {
+        if (jwt.getUserId() == -1) {
             throw new BusinessException(ResultCode.NOT_REGISTERED);
         }
-        return Result.success(
-                new LoginVO(localJwtUtils.generateToken(jwt, false), jwt.getName(), true,
-                        jwt.getCasId(), getAuthorityVOList(jwt.getUserId())), "兑换成功"
+        return new LoginVO(
+                localJwtUtils.generateToken(jwt, false), jwt.getName(), true,
+                        jwt.getCasId(), getAuthorityVOList(jwt.getUserId())
         );
     }
 
-    public ResponseEntity<Result<LoginVO>> localLogin(LoginDTO dto) {
+    public LoginVO localLogin(LoginDTO dto) {
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
         if (dto.getTerm().matches("^\\d{12}$")) {
             wrapper.eq(User::getUsername, dto.getTerm());
@@ -135,6 +90,9 @@ public class AuthService {
         User user = userMapper.selectOne(wrapper);
         if (user == null) {
             throw new BusinessException(ResultCode.USER_NOT_EXIST);
+        }
+        if (user.getPassword() == null) {
+            throw new BusinessException(ResultCode.PASSWORD_UNSET);
         }
         if (!BCrypt.checkpw(dto.getPassword(), user.getPassword())) {
             throw new BusinessException(ResultCode.PASSWORD_INCORRECT);
@@ -150,9 +108,8 @@ public class AuthService {
             jwt.setCasId("");
         }
         String token = localJwtUtils.generateToken(jwt, false);
-        return Result.success(
-                new LoginVO(token, jwt.getName(), jwt.getIsStudent(), jwt.getCasId(),
-                        getAuthorityVOList(jwt.getUserId())), "登录成功"
+        return new LoginVO(
+                token, jwt.getName(), jwt.getIsStudent(), jwt.getCasId(), getAuthorityVOList(jwt.getUserId())
         );
     }
 }
