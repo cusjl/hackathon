@@ -1,6 +1,7 @@
 package org.hackathon.data.enums;
 
 import com.baomidou.mybatisplus.annotation.EnumValue;
+import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 @Getter
@@ -12,6 +13,7 @@ public enum EventStatus {
     OFF(4, "赛事结束");
     @EnumValue
     private final Integer value;
+    @JsonValue
     private final String desc;
     EventStatus(Integer value, String desc) {
         this.value = value;

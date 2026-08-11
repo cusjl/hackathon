@@ -2,15 +2,15 @@ package org.hackathon.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
-import org.hackathon.data.dto.RegisterStudentDTO;
-import org.hackathon.data.dto.StudentInfoDTO;
-import org.hackathon.data.dto.UserInfoDTO;
+import org.hackathon.data.dto.CreateStudentDTO;
+import org.hackathon.data.dto.UpdateStudentDTO;
+import org.hackathon.data.dto.UpdateUserDTO;
 import org.hackathon.data.enums.ResultCode;
 import org.hackathon.data.po.Student;
 import org.hackathon.data.po.StudentTag;
 import org.hackathon.data.po.User;
 import org.hackathon.data.vo.LoginVO;
-import org.hackathon.data.vo.StudentInfoVO;
+import org.hackathon.data.vo.GetStudentVO;
 import org.hackathon.exception.BusinessException;
 import org.hackathon.mapper.StudentMapper;
 import org.hackathon.mapper.StudentTagMapper;
@@ -52,7 +52,7 @@ public class StudentService {
     }
 
     @Transactional
-    public LoginVO register(RegisterStudentDTO dto) {
+    public LoginVO register(CreateStudentDTO dto) {
         LocalJwt jwt = localJwtUtils.parseToken(dto.getToken());
         long count = userMapper.selectCount(
                 new LambdaQueryWrapper<User>().eq(User::getUsername, jwt.getCasId())
@@ -82,21 +82,21 @@ public class StudentService {
         );
     }
 
-    public StudentInfoVO getInfo(Integer userId) {
+    public GetStudentVO getInfo(Integer userId) {
         User user = userMapper.selectById(userId);
         Student student = studentMapper.selectById(userId);
         if (user == null || student == null) {
             throw new BusinessException(ResultCode.STUDENT_NOT_EXIST);
         }
-        return new StudentInfoVO(
+        return new GetStudentVO(
                 user.getPhone(), user.getEmail(), student.getCampus(), student.getMajor(),
                 student.getIntroduction(), student.getTagsAsList()
         );
     }
 
     @Transactional
-    public void updateInfo(StudentInfoDTO dto, Integer userId) {
-        userService.updateUserInfo(new UserInfoDTO(dto.getPhone(), dto.getEmail()), userId);
+    public void updateInfo(UpdateStudentDTO dto, Integer userId) {
+        userService.updateUserInfo(new UpdateUserDTO(dto.getPhone(), dto.getEmail()), userId);
         Student student = studentMapper.selectById(userId);
         boolean update = false;
         if (student == null) {

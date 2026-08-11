@@ -9,7 +9,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class RegisterStudentDTO {
+public class CreateStudentDTO {
 
     @NotBlank(message = "token不能为空")
     private String token;

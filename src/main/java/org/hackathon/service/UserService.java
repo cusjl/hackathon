@@ -4,10 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.hackathon.data.dto.CreateUserDTO;
 import org.hackathon.data.dto.PasswordDTO;
-import org.hackathon.data.dto.UserInfoDTO;
+import org.hackathon.data.dto.UpdateUserDTO;
 import org.hackathon.data.enums.ResultCode;
 import org.hackathon.data.po.User;
-import org.hackathon.data.vo.UserInfoVO;
+import org.hackathon.data.vo.GetUserVO;
 import org.hackathon.exception.BusinessException;
 import org.hackathon.mapper.UserMapper;
 import org.mindrot.jbcrypt.BCrypt;
@@ -32,15 +32,15 @@ public class UserService {
         }
     }
 
-    public UserInfoVO getUserInfo(Integer userId) {
+    public GetUserVO getUserInfo(Integer userId) {
         User user = userMapper.selectById(userId);
         if (user == null) {
             throw new BusinessException(ResultCode.USER_NOT_EXIST);
         }
-        return new UserInfoVO(user.getPhone(), user.getEmail());
+        return new GetUserVO(user.getPhone(), user.getEmail());
     }
 
-    public void updateUserInfo(UserInfoDTO dto, Integer userId) {
+    public void updateUserInfo(UpdateUserDTO dto, Integer userId) {
         User user = userMapper.selectById(userId);
         boolean update = false;
         if (user == null) {

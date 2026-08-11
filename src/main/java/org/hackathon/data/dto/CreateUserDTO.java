@@ -6,7 +6,7 @@ import lombok.Data;
 @Data
 public class CreateUserDTO {
     @NotBlank(message = "姓名不能为空")
-    @Size(max = 11, message = "姓名过长")
+    @Size(max = 11, message = "姓名不能超过11字")
     private String name;
     @NotBlank(message = "手机号不能为空")
     @Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号格式不正确")

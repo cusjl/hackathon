@@ -57,7 +57,7 @@ public class AuthService {
                   .collect(Collectors.toMap(Event::getEventId, Event::getName));
         return list.stream().map(po -> {
             AuthorityVO vo = new AuthorityVO();
-            vo.setType(po.getType().getDesc());
+            vo.setType(po.getType());
             vo.setEventId(po.getEventId());
             if (po.getEventId() != null) {
                 vo.setEventId(po.getEventId());

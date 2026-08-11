@@ -6,9 +6,9 @@ import lombok.RequiredArgsConstructor;
 import org.hackathon.annotation.Auth;
 import org.hackathon.data.dto.CreateUserDTO;
 import org.hackathon.data.dto.PasswordDTO;
-import org.hackathon.data.dto.UserInfoDTO;
+import org.hackathon.data.dto.UpdateUserDTO;
 import org.hackathon.data.vo.Result;
-import org.hackathon.data.vo.UserInfoVO;
+import org.hackathon.data.vo.GetUserVO;
 import org.hackathon.security.jwt.LocalJwt;
 import org.hackathon.service.UserService;
 import org.springframework.http.ResponseEntity;
@@ -24,9 +24,9 @@ public class UserController {
      * 获取用户信息
      * @return vo
      */
-    @GetMapping("/info")
+    @GetMapping
     @Auth
-    public ResponseEntity<Result<UserInfoVO>> getUserInfo(HttpServletRequest request) {
+    public ResponseEntity<Result<GetUserVO>> getUserInfo(HttpServletRequest request) {
         LocalJwt jwt = (LocalJwt) request.getAttribute("jwt");
         return Result.success(userService.getUserInfo(jwt.getUserId()), "获取成功");
     }
@@ -36,10 +36,10 @@ public class UserController {
      * @param dto PATCH风格dto，仅修改非null值
      * @return ok
      */
-    @PatchMapping("/update")
+    @PatchMapping
     @Auth
     public ResponseEntity<Result<Void>> updateUserInfo(
-            @RequestBody @Valid UserInfoDTO dto, HttpServletRequest request) {
+            @RequestBody @Valid UpdateUserDTO dto, HttpServletRequest request) {
         LocalJwt jwt = (LocalJwt) request.getAttribute("jwt");
         userService.updateUserInfo(dto, jwt.getUserId());
         return Result.ok();
@@ -64,7 +64,7 @@ public class UserController {
      * @param dto 基本信息+初始密码
      * @return ok
      */
-    @PostMapping("/create")
+    @PostMapping
     @Auth(onlySuper = true)
     public ResponseEntity<Result<Void>> createNonstudentUser(@RequestBody @Valid CreateUserDTO dto) {
         userService.createNonstudentUser(dto);

@@ -4,12 +4,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.hackathon.annotation.Auth;
-import org.hackathon.data.dto.RegisterStudentDTO;
-import org.hackathon.data.dto.StudentInfoDTO;
+import org.hackathon.data.dto.CreateStudentDTO;
+import org.hackathon.data.dto.UpdateStudentDTO;
 import org.hackathon.data.vo.GetTagsVO;
 import org.hackathon.data.vo.LoginVO;
 import org.hackathon.data.vo.Result;
-import org.hackathon.data.vo.StudentInfoVO;
+import org.hackathon.data.vo.GetStudentVO;
 import org.hackathon.security.jwt.LocalJwt;
 import org.hackathon.service.StudentService;
 import org.springframework.http.ResponseEntity;
@@ -27,8 +27,8 @@ public class StudentController {
      * @param dto 注册基本信息，含临时token，密码可选
      * @return token及基本信息
      */
-    @PostMapping("/register")
-    public ResponseEntity<Result<LoginVO>> register(@Valid @RequestBody RegisterStudentDTO dto) {
+    @PostMapping
+    public ResponseEntity<Result<LoginVO>> register(@Valid @RequestBody CreateStudentDTO dto) {
         return Result.success(studentService.register(dto), "注册成功");
     }
 
@@ -45,9 +45,9 @@ public class StudentController {
      * 获取学生信息
      * @return vo
      */
-    @GetMapping("/info")
+    @GetMapping
     @Auth(onlyStudent = true)
-    public ResponseEntity<Result<StudentInfoVO>> getStudentInfo(HttpServletRequest request) {
+    public ResponseEntity<Result<GetStudentVO>> getStudentInfo(HttpServletRequest request) {
         LocalJwt jwt = (LocalJwt) request.getAttribute("jwt");
         return Result.success(studentService.getInfo(jwt.getUserId()), "获取成功");
     }
@@ -57,9 +57,10 @@ public class StudentController {
      * @param dto PATCH风格dto，仅修改非null值
      * @return ok
      */
-    @PatchMapping("/update")
+    @PatchMapping
     @Auth(onlyStudent = true)
-    public ResponseEntity<Result<Void>> updateStudentInfo(@Valid @RequestBody StudentInfoDTO dto, HttpServletRequest request) {
+    public ResponseEntity<Result<Void>> updateStudentInfo(
+            @Valid @RequestBody UpdateStudentDTO dto, HttpServletRequest request) {
         LocalJwt jwt = (LocalJwt) request.getAttribute("jwt");
         studentService.updateInfo(dto, jwt.getUserId());
         return Result.ok();

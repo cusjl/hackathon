@@ -1,6 +1,7 @@
 package org.hackathon.data.enums;
 
 import com.baomidou.mybatisplus.annotation.EnumValue;
+import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 @Getter
@@ -11,6 +12,7 @@ public enum AuthorityEnum {
 
     @EnumValue
     private final Integer value;
+    @JsonValue
     private final String desc;
     AuthorityEnum(Integer value, String desc) {
         this.value = value;

@@ -9,7 +9,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class StudentInfoVO {
+public class GetStudentVO {
     private String phone;
     private String email;
     private String campus;

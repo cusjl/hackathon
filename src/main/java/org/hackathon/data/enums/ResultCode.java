@@ -31,6 +31,12 @@ public enum ResultCode {
 
     //赛事相关
     EVENT_NOT_FOUND(3001, HttpStatus.NOT_FOUND, "赛事不存在"),
+    EVENT_TIME_CONFLICT(3002, HttpStatus.CONFLICT, "赛事时间非法"),
+    EVENT_ALREADY_REG(3003, HttpStatus.CONFLICT, "赛事已开始报名"),
+    TRACK_NOT_FOUND(3011, HttpStatus.NOT_FOUND, "赛道不存在"),
+    TRACK_ALREADY_EXIST(3012, HttpStatus.CONFLICT, "赛道已存在"),
+    PHASE_NOT_FOUND(3021, HttpStatus.NOT_FOUND, "轮次不存在"),
+    PHASE_EVENT_TIME_CONFLICT(3022, HttpStatus.CONFLICT, "轮次时间与赛事冲突"),
 
     //通用
     //PARAM_ERROR的msg通过Validation抛出具体错误，详见各参数message

@@ -8,7 +8,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class StudentInfoDTO {
+public class UpdateStudentDTO {
     @Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号格式不正确")
     private String phone;
     @Email(message = "邮箱格式不正确")
