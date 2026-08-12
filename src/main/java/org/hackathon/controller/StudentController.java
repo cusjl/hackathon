@@ -6,10 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.hackathon.annotation.Auth;
 import org.hackathon.data.dto.CreateStudentDTO;
 import org.hackathon.data.dto.UpdateStudentDTO;
-import org.hackathon.data.vo.GetTagsVO;
-import org.hackathon.data.vo.LoginVO;
-import org.hackathon.data.vo.Result;
-import org.hackathon.data.vo.GetStudentVO;
+import org.hackathon.data.vo.*;
 import org.hackathon.security.jwt.LocalJwt;
 import org.hackathon.service.StudentService;
 import org.springframework.http.ResponseEntity;
@@ -28,8 +25,8 @@ public class StudentController {
      * @return token及基本信息
      */
     @PostMapping
-    public ResponseEntity<Result<LoginVO>> register(@Valid @RequestBody CreateStudentDTO dto) {
-        return Result.success(studentService.register(dto), "注册成功");
+    public ResponseEntity<Result<CreateStudentVO>> createStudent(@Valid @RequestBody CreateStudentDTO dto) {
+        return Result.success(studentService.createStudent(dto), "注册成功");
     }
 
     /**
@@ -47,9 +44,9 @@ public class StudentController {
      */
     @GetMapping
     @Auth(onlyStudent = true)
-    public ResponseEntity<Result<GetStudentVO>> getStudentInfo(HttpServletRequest request) {
+    public ResponseEntity<Result<GetStudentVO>> getStudent(HttpServletRequest request) {
         LocalJwt jwt = (LocalJwt) request.getAttribute("jwt");
-        return Result.success(studentService.getInfo(jwt.getUserId()), "获取成功");
+        return Result.success(studentService.getStudent(jwt.getUserId()), "获取成功");
     }
 
     /**
@@ -59,10 +56,10 @@ public class StudentController {
      */
     @PatchMapping
     @Auth(onlyStudent = true)
-    public ResponseEntity<Result<Void>> updateStudentInfo(
+    public ResponseEntity<Result<Void>> updateStudent(
             @Valid @RequestBody UpdateStudentDTO dto, HttpServletRequest request) {
         LocalJwt jwt = (LocalJwt) request.getAttribute("jwt");
-        if (studentService.updateInfo(dto, jwt.getUserId())) return Result.ok();
+        if (studentService.updateStudent(dto, jwt.getUserId())) return Result.ok();
         else return Result.noUpdate();
     }
 }

@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class GetUserVO {
-    private String phone;
-    private String email;
+public class CreateExUserVO {
+    private Integer userId;
 }

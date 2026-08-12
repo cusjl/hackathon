@@ -42,6 +42,9 @@ public class AuthAspect {
         if (auth.onlyStudent() && !jwt.getStudentFlag()) {
             throw new BusinessException(ResultCode.NOT_STUDENT);
         }
+        if (auth.onlyExtern() && jwt.getStudentFlag()) {
+            throw new BusinessException(ResultCode.NOT_EXTERN);
+        }
         if (auth.onlySuper()) {
             long count = authorityMapper.selectCount(
                     new LambdaQueryWrapper<Authority>().eq(Authority::getUserId, jwt.getUserId())

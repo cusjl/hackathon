@@ -42,7 +42,7 @@ public class AuthService {
         return user.getUserId();
     }
 
-    private List<AuthorityVO> getAuthorityVOList(Integer userId) {
+    public List<AuthorityVO> getAuthorityVOList(Integer userId) {
         List<Authority> list = authorityMapper.selectList(
                 new LambdaQueryWrapper<Authority>().eq(Authority::getUserId, userId)
         );

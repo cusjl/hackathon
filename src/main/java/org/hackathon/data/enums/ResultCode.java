@@ -14,10 +14,15 @@ public enum ResultCode {
     TOKEN_EXPIRED(1002, HttpStatus.UNAUTHORIZED, "token过期"),
     NOT_REGISTERED(1003, HttpStatus.UNAUTHORIZED, "学生尚未注册"),
     TOKEN_IS_BLANK(1004, HttpStatus.UNAUTHORIZED, "未携带token"),
-    NOT_STUDENT(1005, HttpStatus.UNAUTHORIZED, "用户无参赛权限"),
+    NOT_STUDENT(1005, HttpStatus.UNAUTHORIZED, "用户无校内权限"),
     NOT_SUPER(1006, HttpStatus.UNAUTHORIZED, "用户无超管权限"),
-    NOT_ADMIN(1007, HttpStatus.UNAUTHORIZED, "用户无管理员权限"),
-    NOT_JUDGE(1008, HttpStatus.UNAUTHORIZED, "用户无评委权限"),
+    NOT_EXTERN(1007, HttpStatus.UNAUTHORIZED, "用户不是外部用户"),
+    NOT_ON_CAMPUS(1008, HttpStatus.UNAUTHORIZED, "用户不能转为学生"),
+    NOT_ADMIN(1011, HttpStatus.UNAUTHORIZED, "用户无管理员权限"),
+    NOT_JUDGE(1012, HttpStatus.UNAUTHORIZED, "用户无评委权限"),
+    AUTHORITY_REPEAT(1020, HttpStatus.CONFLICT, "重复授权"),
+    LAST_SUPER(1021, HttpStatus.CONFLICT, "最后一名超管无法删除"),
+    LAST_ADMIN(1022, HttpStatus.CONFLICT, "最后一名赛管无法删除"),
 
     //账号相关
     USER_NOT_EXIST(2001, HttpStatus.NOT_FOUND, "用户不存在"),

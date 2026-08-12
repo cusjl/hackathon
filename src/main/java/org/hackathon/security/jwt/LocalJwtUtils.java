@@ -25,7 +25,7 @@ public class LocalJwtUtils {
         return Keys.hmacShaKeyFor(localProperties.secretKey().getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(LocalJwt jwt, boolean isTemp) {
+    public String generateToken(LocalJwt jwt, boolean temp) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("name", jwt.getName());
         claims.put("studentFlag", jwt.getStudentFlag());
@@ -35,7 +35,7 @@ public class LocalJwtUtils {
                 .subject(jwt.getUserId().toString())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() +
-                        (isTemp ? localProperties.shortExpiration(): localProperties.expiration())))
+                        (temp ? localProperties.shortExpiration(): localProperties.expiration())))
                 .signWith(getKey())
                 .compact();
     }

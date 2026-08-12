@@ -5,22 +5,17 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hackathon.data.enums.AuthorityEnum;
 
 import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class Authority {
-    @TableId(type = IdType.AUTO)
-    private Integer id;
+public class ExUser {
+    @TableId(type = IdType.INPUT)
     private Integer userId;
-    private AuthorityEnum type;
-    private Integer eventId;
+    private Boolean onCampus;
+    private String organization;
     private LocalDateTime createTime;
-
-    public Integer getTypeValue() {
-        return type.getValue();
-    }
+    private LocalDateTime updateTime;
 }

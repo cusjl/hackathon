@@ -10,4 +10,5 @@ import java.lang.annotation.Target;
 public @interface Auth {
     boolean onlyStudent() default false;
     boolean onlySuper() default false;
+    boolean onlyExtern() default false;
 }
