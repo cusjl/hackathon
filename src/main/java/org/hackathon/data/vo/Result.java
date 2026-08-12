@@ -24,6 +24,10 @@ public class Result<T> {
         return success(null, "成功");
     }
 
+    public static ResponseEntity<Result<Void>> noUpdate() {
+        return success(null, "未更新");
+    }
+
     public static ResponseEntity<Result<Void>> error(ResultCode resultCode) {
         return ResponseEntity.status(resultCode.getStatus()).body(
                 new Result<>(resultCode.getCode(), null, resultCode.getMsg()));

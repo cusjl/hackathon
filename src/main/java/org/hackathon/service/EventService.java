@@ -12,7 +12,7 @@ import org.hackathon.data.po.Event;
 import org.hackathon.data.po.Phase;
 import org.hackathon.data.po.Track;
 import org.hackathon.data.vo.GetEventVO;
-import org.hackathon.data.vo.TrackNameVO;
+import org.hackathon.data.vo.BriefTrackVO;
 import org.hackathon.exception.BusinessException;
 import org.hackathon.mapper.EventMapper;
 import org.hackathon.mapper.PhaseMapper;
@@ -39,8 +39,8 @@ public class EventService {
         }
     }
 
-    //每次使用status时一定要调用，维护表属性
-    private Event updateStatus(Event event){
+    //每次用eventMapper查表调用，维护表属性
+    public Event updateStatus(Event event){
         boolean flag = false;
         int value = event.getStatus().getValue();
         LocalDateTime now = LocalDateTime.now();
@@ -60,7 +60,7 @@ public class EventService {
                     break;
                 case LIVE:
                     if (now.isBefore(event.getLiveEnd())) flag = true;
-                    else event.setStatus(EventStatus.OFF);
+                    else event.setStatus(EventStatus.END);
                     break;
                 default:
                     flag = true;
@@ -77,7 +77,7 @@ public class EventService {
     public Integer createEvent(CreateEventDTO dto) {
         verifyEventTime(dto.getRegBeg(), dto.getRegEnd(), dto.getLiveBeg(), dto.getLiveEnd());
         Event event = new Event(null, dto.getName(), EventStatus.PREP, dto.getRegBeg(), dto.getRegEnd(),
-        dto.getLiveBeg(), dto.getLiveEnd(), dto.getIntroduction(), dto.getTags(), null,
+        dto.getLiveBeg(), dto.getLiveEnd(), dto.getIntroduction(), dto.getTags(), "", 1,
                 LocalDateTime.now(), LocalDateTime.now());
         eventMapper.insert(event);
         return event.getEventId();
@@ -93,7 +93,7 @@ public class EventService {
         if (trackMapper.selectCount(wrapper) > 0) {
             throw new BusinessException(ResultCode.TRACK_ALREADY_EXIST);
         }
-        Track track = new Track(null, eventId, dto.getName(), dto.getDescMd(),
+        Track track = new Track(null, eventId, dto.getName(), dto.getDescMd(), 1,
                 LocalDateTime.now(), LocalDateTime.now());
         trackMapper.insert(track);
         return track.getTrackId();
@@ -103,10 +103,10 @@ public class EventService {
         Event event = updateStatus(eventMapper.selectById(eventId));
         GetEventVO vo = new GetEventVO();
         BeanUtils.copyProperties(event, vo);
-        List<TrackNameVO> list = trackMapper.selectList(
+        List<BriefTrackVO> list = trackMapper.selectList(
                 new LambdaQueryWrapper<Track>().eq(Track::getEventId, eventId)
                         .select(Track::getTrackId, Track::getName)
-        ).stream().map(po -> new TrackNameVO(po.getTrackId(), po.getName())).toList();
+        ).stream().map(po -> new BriefTrackVO(po.getTrackId(), po.getName())).toList();
         vo.setTracks(list);
         return vo;
     }
@@ -117,10 +117,13 @@ public class EventService {
         return trackMapper.selectList(wrapper).stream().map(Track::getTrackId).toList();
     }
 
-    public void updateEvent(UpdateEventDTO dto, Integer eventId) {
+    public boolean updateEvent(UpdateEventDTO dto, Integer eventId) {
         Event event = updateStatus(eventMapper.selectById(eventId));
         if (event.getRegBeg().isBefore(LocalDateTime.now())) {
             throw new BusinessException(ResultCode.EVENT_ALREADY_REG);
+        }
+        if (!event.getVersion().equals(dto.getVersion())) {
+            throw new BusinessException(ResultCode.RESOURCE_UPDATED);
         }
         boolean update = false;
         if (dto.getRegBeg() != null && !dto.getRegBeg().equals(event.getRegBeg())) {
@@ -143,7 +146,7 @@ public class EventService {
         List<Integer> trackIds = getTrackIds(eventId);
         LambdaUpdateWrapper<Phase> wrapper = new LambdaUpdateWrapper<>();
         wrapper.in(Phase::getTrackId, trackIds).and(w ->
-                w.lt(Phase::getSubmitBeg, event.getLiveBeg()).or().gt(Phase::getSubmitEnd, event.getLiveEnd()));
+                w.lt(Phase::getSubmitBeg, event.getLiveBeg()).or().gt(Phase::getReviewEnd, event.getLiveEnd()));
         if (phaseMapper.selectCount(wrapper) > 0) {
             throw new BusinessException(ResultCode.PHASE_EVENT_TIME_CONFLICT);
         }
@@ -159,9 +162,16 @@ public class EventService {
             event.setTags(dto.getTags());
             update = true;
         }
+        if (dto.getNotice() != null && !dto.getNotice().equals(event.getNotice())) {
+            event.setNotice(dto.getNotice());
+        }
         if (update) {
             event.setUpdateTime(LocalDateTime.now());
-            eventMapper.updateById(event);
+            //乐观锁检查
+            if (eventMapper.updateById(event) == 0) {
+                throw new BusinessException(ResultCode.RESOURCE_UPDATED);
+            }
         }
+        return update;
     }
 }

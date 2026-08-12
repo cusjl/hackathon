@@ -39,7 +39,7 @@ public class AuthAspect {
         LocalJwt jwt = localJwtUtils.extractJwt(request);
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         Auth auth = signature.getMethod().getAnnotation(Auth.class);
-        if (auth.onlyStudent() && !jwt.getIsStudent()) {
+        if (auth.onlyStudent() && !jwt.getStudentFlag()) {
             throw new BusinessException(ResultCode.NOT_STUDENT);
         }
         if (auth.onlySuper()) {

@@ -41,8 +41,8 @@ public class UserController {
     public ResponseEntity<Result<Void>> updateUserInfo(
             @RequestBody @Valid UpdateUserDTO dto, HttpServletRequest request) {
         LocalJwt jwt = (LocalJwt) request.getAttribute("jwt");
-        userService.updateUserInfo(dto, jwt.getUserId());
-        return Result.ok();
+        if (userService.updateUserInfo(dto, jwt.getUserId())) return Result.ok();
+        else return Result.noUpdate();
     }
 
     /**

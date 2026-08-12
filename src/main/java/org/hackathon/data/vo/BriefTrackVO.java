@@ -1,4 +1,4 @@
-package org.hackathon.security.jwt;
+package org.hackathon.data.vo;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -7,9 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class LocalJwt {
-    private Integer userId;
+public class BriefTrackVO {
+    private Integer trackId;
     private String name;
-    private Boolean studentFlag;
-    private String casId;
 }

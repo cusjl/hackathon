@@ -10,7 +10,7 @@ public enum EventStatus {
     REG(1, "报名阶段"),
     MID(2, "赛前休整"),
     LIVE(3, "赛事进行"),
-    OFF(4, "赛事结束");
+    END(4, "赛事结束");
     @EnumValue
     private final Integer value;
     @JsonValue

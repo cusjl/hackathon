@@ -67,7 +67,7 @@ public class EventController {
     @EventAuth(mode = "ADMIN", var = "EVENT")
     public ResponseEntity<Result<Void>> updateEvent(
             @PathVariable Integer eventId, @RequestBody @Valid UpdateEventDTO dto) {
-        eventService.updateEvent(dto, eventId);
-        return Result.ok();
+        if (eventService.updateEvent(dto, eventId)) return Result.ok();
+        else return Result.noUpdate();
     }
 }

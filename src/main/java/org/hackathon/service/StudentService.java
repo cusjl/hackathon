@@ -95,8 +95,10 @@ public class StudentService {
     }
 
     @Transactional
-    public void updateInfo(UpdateStudentDTO dto, Integer userId) {
-        userService.updateUserInfo(new UpdateUserDTO(dto.getPhone(), dto.getEmail()), userId);
+    public boolean updateInfo(UpdateStudentDTO dto, Integer userId) {
+        boolean userUpdate = userService.updateUserInfo(
+                new UpdateUserDTO(dto.getPhone(), dto.getEmail()), userId
+        );
         Student student = studentMapper.selectById(userId);
         boolean update = false;
         if (student == null) {
@@ -126,6 +128,7 @@ public class StudentService {
             student.setUpdateTime(LocalDateTime.now());
             studentMapper.updateById(student);
         }
+        return userUpdate || update;
     }
 
 }

@@ -32,7 +32,8 @@ public enum ResultCode {
     //赛事相关
     EVENT_NOT_FOUND(3001, HttpStatus.NOT_FOUND, "赛事不存在"),
     EVENT_TIME_CONFLICT(3002, HttpStatus.CONFLICT, "赛事时间非法"),
-    EVENT_ALREADY_REG(3003, HttpStatus.CONFLICT, "赛事已开始报名"),
+    EVENT_ALREADY_REG(3003, HttpStatus.FORBIDDEN, "赛事已开始报名"),
+    EVENT_ALREADY_OFF(3004, HttpStatus.FORBIDDEN, "赛事已经结束"),
     TRACK_NOT_FOUND(3011, HttpStatus.NOT_FOUND, "赛道不存在"),
     TRACK_ALREADY_EXIST(3012, HttpStatus.CONFLICT, "赛道已存在"),
     PHASE_NOT_FOUND(3021, HttpStatus.NOT_FOUND, "轮次不存在"),
@@ -41,6 +42,8 @@ public enum ResultCode {
     //通用
     //PARAM_ERROR的msg通过Validation抛出具体错误，详见各参数message
     PARAM_ERROR(4000, HttpStatus.BAD_REQUEST, "参数错误"),
+    RESOURCE_CONFLICT(4001, HttpStatus.CONFLICT, "资源冲突"),
+    RESOURCE_UPDATED(4002, HttpStatus.CONFLICT, "存在已更新资源"),
 
     INTERNAL_ERROR(5000, HttpStatus.INTERNAL_SERVER_ERROR, "系统内部错误"),
     ;

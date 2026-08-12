@@ -40,7 +40,7 @@ public class UserService {
         return new GetUserVO(user.getPhone(), user.getEmail());
     }
 
-    public void updateUserInfo(UpdateUserDTO dto, Integer userId) {
+    public boolean updateUserInfo(UpdateUserDTO dto, Integer userId) {
         User user = userMapper.selectById(userId);
         boolean update = false;
         if (user == null) {
@@ -56,8 +56,11 @@ public class UserService {
             user.setEmail(dto.getEmail());
             update = true;
         }
-        if (update) user.setUpdateTime(LocalDateTime.now());
-        userMapper.updateById(user);
+        if (update) {
+            user.setUpdateTime(LocalDateTime.now());
+            userMapper.updateById(user);
+        }
+        return update;
     }
 
     public void updatePassword(PasswordDTO dto, Integer userId) {

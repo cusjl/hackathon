@@ -99,8 +99,8 @@ public class AuthService {
         }
         LocalJwt jwt = new LocalJwt();
         jwt.setUserId(user.getUserId());
-        jwt.setIsStudent(user.getIsStudent());
-        if (user.getIsStudent()) {
+        jwt.setStudentFlag(user.getStudentFlag());
+        if (user.getStudentFlag()) {
             jwt.setName(studentMapper.selectById(user.getUserId()).getName());
             jwt.setCasId(user.getUsername());
         } else {
@@ -109,7 +109,7 @@ public class AuthService {
         }
         String token = localJwtUtils.generateToken(jwt, false);
         return new LoginVO(
-                token, jwt.getName(), jwt.getIsStudent(), jwt.getCasId(), getAuthorityVOList(jwt.getUserId())
+                token, jwt.getName(), jwt.getStudentFlag(), jwt.getCasId(), getAuthorityVOList(jwt.getUserId())
         );
     }
 }

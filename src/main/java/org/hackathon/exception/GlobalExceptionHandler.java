@@ -4,11 +4,13 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.hackathon.data.enums.ResultCode;
 import org.hackathon.data.vo.Result;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingPathVariableException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -55,7 +57,15 @@ public class GlobalExceptionHandler {
         return Result.error(ResultCode.PARAM_ERROR, message);
     }
 
-    // ==================== 5. 参数类型不匹配 ====================
+    // ==================== 5. 缺少路径变量 ====================
+    @ExceptionHandler(MissingPathVariableException.class)
+    public ResponseEntity<Result<Void>> handlePathVariable(MissingPathVariableException e) {
+        String message = "请求路径缺少必要的参数: " + e.getVariableName();
+        log.warn(message);
+        return Result.error(ResultCode.PARAM_ERROR, message);
+    }
+
+    // ==================== 6. 参数类型不匹配 ====================
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Result<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
         String message = String.format("参数 '%s' 类型不匹配，期望类型: %s",
@@ -64,14 +74,14 @@ public class GlobalExceptionHandler {
         return Result.error(ResultCode.PARAM_ERROR, message);
     }
 
-    // ==================== 6. JSON 格式错误 ====================
+    // ==================== 7. JSON 格式错误 ====================
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Result<Void>> handleMessageNotReadable(HttpMessageNotReadableException e) {
         log.warn("请求体解析失败: {}", e.getMessage());
         return Result.error(ResultCode.PARAM_ERROR, "JSON请求体格式错误");
     }
 
-    // ==================== 7. 约束校验异常（如 @Pattern 在 DTO 外） ====================
+    // ==================== 8. 约束校验异常（如 @Pattern 在 DTO 外） ====================
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<Result<Void>> handleConstraintViolation(ConstraintViolationException e) {
         String message = e.getConstraintViolations().stream()
@@ -81,7 +91,17 @@ public class GlobalExceptionHandler {
         return Result.error(ResultCode.PARAM_ERROR, message);
     }
 
-    // ==================== 8. 所有未捕获的异常（兜底） ====================
+    // ==================== 9. 资源重复 =====================
+    @ExceptionHandler(DuplicateKeyException.class)
+    public ResponseEntity<Result<Void>> handleDuplicateKey(DuplicateKeyException e) {
+        // 日志记录下详细信息，方便后端排查（比如打印出具体是哪个约束）
+        log.warn("数据插入/更新失败，违反唯一约束，详细信息：{}", e.getMessage());
+
+        // 返回给前端通用且友好的提示（不透露数据库底层细节）
+        return Result.error(ResultCode.RESOURCE_CONFLICT);
+    }
+
+    // =================== 10. 所有未捕获的异常（兜底） ====================
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Result<Void>> handleException(Exception e) {
         log.error("系统异常: ", e);

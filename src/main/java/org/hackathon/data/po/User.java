@@ -17,7 +17,7 @@ public class User {
     //学生用户：学号，非学生用户：姓名
     private String username;
     private String password;
-    private Boolean isStudent;
+    private Boolean studentFlag;
     private String phone;
     private String email;
     private LocalDateTime createTime;

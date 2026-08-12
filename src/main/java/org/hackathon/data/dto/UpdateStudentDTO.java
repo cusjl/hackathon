@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import org.hackathon.annotation.PatchNotBlank;
 
 import java.util.List;
 
@@ -18,7 +19,7 @@ public class UpdateStudentDTO {
             message = "校区选择无效"
     )
     private String campus;
-    @Pattern(regexp = "^(?!\\s*$).+", message = "专业不能为空")
+    @PatchNotBlank(message = "专业不能为空")
     @Size(max = 50, message = "专业名称过长")
     private String major;
     @Size(max = 100, message = "简介过长")

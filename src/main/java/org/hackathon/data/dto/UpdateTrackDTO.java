@@ -4,19 +4,12 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.hackathon.annotation.PatchNotBlank;
 
-import java.time.LocalDateTime;
-
 @Data
-public class UpdateEventDTO {
+public class UpdateTrackDTO {
     @PatchNotBlank(message = "名称不能为空")
     private String name;
-    private LocalDateTime regBeg;
-    private LocalDateTime regEnd;
-    private LocalDateTime liveBeg;
-    private LocalDateTime liveEnd;
-    private String introduction;
-    private String tags;
-    private String notice;
+    @PatchNotBlank(message = "描述md不能为空")
+    private String descMd;
     @NotNull(message = "版本号不能为空")
     private Integer version;
 }

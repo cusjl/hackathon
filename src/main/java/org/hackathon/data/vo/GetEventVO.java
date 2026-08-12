@@ -18,5 +18,6 @@ public class GetEventVO {
     private String introduction;
     private String tags;
     private String notice;
-    private List<TrackNameVO> tracks;
+    private List<BriefTrackVO> tracks;
+    private Integer version;
 }

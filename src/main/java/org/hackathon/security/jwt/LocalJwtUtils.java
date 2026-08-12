@@ -28,7 +28,7 @@ public class LocalJwtUtils {
     public String generateToken(LocalJwt jwt, boolean isTemp) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("name", jwt.getName());
-        claims.put("isStudent", jwt.getIsStudent());
+        claims.put("studentFlag", jwt.getStudentFlag());
         claims.put("casId", jwt.getCasId());
         return Jwts.builder()
                 .claims(claims)
@@ -50,7 +50,7 @@ public class LocalJwtUtils {
             return new LocalJwt(
                     Integer.valueOf(claims.getSubject()),
                     claims.get("name", String.class),
-                    claims.get("isStudent", Boolean.class),
+                    claims.get("studentFlag", Boolean.class),
                     claims.get("casId", String.class)
             );
         } catch (ExpiredJwtException e) {

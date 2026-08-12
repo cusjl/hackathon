@@ -62,7 +62,7 @@ public class StudentController {
     public ResponseEntity<Result<Void>> updateStudentInfo(
             @Valid @RequestBody UpdateStudentDTO dto, HttpServletRequest request) {
         LocalJwt jwt = (LocalJwt) request.getAttribute("jwt");
-        studentService.updateInfo(dto, jwt.getUserId());
-        return Result.ok();
+        if (studentService.updateInfo(dto, jwt.getUserId())) return Result.ok();
+        else return Result.noUpdate();
     }
 }
