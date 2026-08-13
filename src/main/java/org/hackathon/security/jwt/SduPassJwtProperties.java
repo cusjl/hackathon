@@ -2,7 +2,7 @@ package org.hackathon.security.jwt;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties("jwt.sdupass")
+@ConfigurationProperties("jwt.sdu-pass")
 public record SduPassJwtProperties(
         String sduPassSecret,
         String salt,

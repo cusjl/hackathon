@@ -7,7 +7,7 @@ import org.hackathon.data.enums.ResultCode;
 import org.hackathon.data.po.Authority;
 import org.hackathon.data.po.Student;
 import org.hackathon.data.po.User;
-import org.hackathon.data.vo.UserAuthorityVO;
+import org.hackathon.data.vo.AuthorityUserVO;
 import org.hackathon.exception.BusinessException;
 import org.hackathon.mapper.AuthorityMapper;
 import org.hackathon.mapper.EventMapper;
@@ -111,7 +111,7 @@ public class AuthorityService {
         );
     }
 
-    public List<UserAuthorityVO> getAuthorityListByEvent(Integer eventId) {
+    public List<AuthorityUserVO> getAuthorityListByEvent(Integer eventId) {
         List<Authority> authorities = authorityMapper.selectList(
                 new LambdaQueryWrapper<Authority>().eq(Authority::getEventId, eventId)
                         .select(Authority::getUserId, Authority::getType)
@@ -125,7 +125,7 @@ public class AuthorityService {
                 .collect(Collectors.toMap(User::getUserId, User::getUsername));
         Map<Integer, String> studentNames = studentMapper.selectByIds(ids).stream()
                 .collect(Collectors.toMap(Student::getUserId, Student::getName));
-        return authorities.stream().map(a -> new UserAuthorityVO(a.getUserId(),
+        return authorities.stream().map(a -> new AuthorityUserVO(a.getUserId(),
                 (studentFlags.get(a.getUserId()) ? studentNames.get(a.getUserId())
                         : exUserNames.get(a.getUserId())), a.getType())).toList();
     }

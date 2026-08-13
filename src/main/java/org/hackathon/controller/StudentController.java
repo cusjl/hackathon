@@ -34,32 +34,32 @@ public class StudentController {
      * @return vo
      */
     @GetMapping("/tags")
-    public ResponseEntity<Result<GetTagsVO>> getAvailableTags() {
-        return Result.success(new GetTagsVO(studentService.getAvailableTags()), "获取成功");
+    public ResponseEntity<Result<StudentTagsVO>> getAvailableTags() {
+        return Result.success(new StudentTagsVO(studentService.getAvailableTags()), "获取成功");
     }
 
     /**
-     * 获取学生信息
+     * 学生自查信息
      * @return vo
      */
     @GetMapping
     @Auth(onlyStudent = true)
-    public ResponseEntity<Result<GetStudentVO>> getStudent(HttpServletRequest request) {
+    public ResponseEntity<Result<StudentInfoVO>> getStudent(HttpServletRequest request) {
         LocalJwt jwt = (LocalJwt) request.getAttribute("jwt");
         return Result.success(studentService.getStudent(jwt.getUserId()), "获取成功");
     }
 
     /**
      * 更新学生信息
-     * @param dto PATCH风格dto，仅修改非null值
+     * @param dto dto
      * @return ok
      */
-    @PatchMapping
+    @PutMapping
     @Auth(onlyStudent = true)
     public ResponseEntity<Result<Void>> updateStudent(
             @Valid @RequestBody UpdateStudentDTO dto, HttpServletRequest request) {
         LocalJwt jwt = (LocalJwt) request.getAttribute("jwt");
-        if (studentService.updateStudent(dto, jwt.getUserId())) return Result.ok();
-        else return Result.noUpdate();
+        studentService.updateStudent(dto, jwt.getUserId());
+        return Result.ok();
     }
 }

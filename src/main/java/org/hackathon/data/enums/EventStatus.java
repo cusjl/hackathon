@@ -1,22 +1,18 @@
 package org.hackathon.data.enums;
 
-import com.baomidou.mybatisplus.annotation.EnumValue;
 import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 @Getter
 public enum EventStatus {
-    PREP(0, "赛前准备"),
-    REG(1, "报名阶段"),
-    MID(2, "赛前休整"),
-    LIVE(3, "赛事进行"),
-    END(4, "赛事结束");
-    @EnumValue
-    private final Integer value;
+    PREP( "赛前准备"),
+    REG("报名阶段"),
+    MID("赛前休整"),
+    LIVE("赛事进行"),
+    END("赛事结束");
     @JsonValue
     private final String desc;
-    EventStatus(Integer value, String desc) {
-        this.value = value;
+    EventStatus(String desc) {
         this.desc = desc;
     }
 }

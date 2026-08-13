@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class BriefPhaseVO {
-    private Integer phaseId;
-    private String name;
+public class TrackIdVO {
+    private Integer trackId;
 }

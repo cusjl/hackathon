@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class CreateEventVO {
-    private Integer eventId;
+public class ExUserBriefVO {
+    private Boolean onCampus;
+    private String organization;
 }

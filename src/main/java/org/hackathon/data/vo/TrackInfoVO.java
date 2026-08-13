@@ -3,13 +3,16 @@ package org.hackathon.data.vo;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hackathon.data.enums.AuthorityEnum;
+
+import java.util.List;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserAuthorityVO {
-    private Integer userId;
+public class TrackInfoVO {
+    private Integer trackId;
     private String name;
-    private AuthorityEnum authority;
+    private String descMd;
+    private Integer version;
+    private List<PhaseBriefVO> phases;
 }

@@ -3,9 +3,11 @@ package org.hackathon.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.hackathon.annotation.EventAuth;
+import org.hackathon.data.dto.CreatePhaseDTO;
 import org.hackathon.data.dto.UpdateTrackDTO;
-import org.hackathon.data.vo.GetActivePhaseVO;
-import org.hackathon.data.vo.GetTrackVO;
+import org.hackathon.data.vo.PhaseIdVO;
+import org.hackathon.data.vo.PhaseActiveVO;
+import org.hackathon.data.vo.TrackInfoVO;
 import org.hackathon.data.vo.Result;
 import org.hackathon.service.TrackService;
 import org.springframework.http.ResponseEntity;
@@ -25,22 +27,22 @@ public class TrackController {
      */
     @GetMapping("/{trackId}")
     @EventAuth(mode = "GUEST", var = "TRACK")
-    public ResponseEntity<Result<GetTrackVO>> getTrack(@PathVariable Integer trackId) {
+    public ResponseEntity<Result<TrackInfoVO>> getTrack(@PathVariable Integer trackId) {
         return Result.success(trackService.getTrack(trackId), "获取成功");
     }
 
     /**
      * 更新赛道
      * @param trackId 赛道id
-     * @param dto PATCH风格dto
+     * @param dto dto
      * @return ok
      */
-    @PatchMapping("/{trackId}")
+    @PutMapping("/{trackId}")
     @EventAuth(mode = "ADMIN", var = "TRACK")
     public ResponseEntity<Result<Void>> updateTrack(
             @PathVariable Integer trackId, @RequestBody @Valid UpdateTrackDTO dto) {
-        if (trackService.updateTrack(dto, trackId)) return Result.ok();
-        else return Result.noUpdate();
+        trackService.updateTrack(dto, trackId);
+        return Result.ok();
     }
 
     /**
@@ -50,7 +52,20 @@ public class TrackController {
      */
     @GetMapping("/{trackId}/active")
     @EventAuth(mode = "GUEST", var = "TRACK")
-    public ResponseEntity<Result<GetActivePhaseVO>> getActivePhase(@PathVariable Integer trackId) {
+    public ResponseEntity<Result<PhaseActiveVO>> getActivePhase(@PathVariable Integer trackId) {
         return Result.success(trackService.getActivePhase(trackId), "获取成功");
+    }
+
+    /**
+     * 创建轮次
+     * @param trackId 赛道id
+     * @param dto 轮次信息
+     * @return 轮次id
+     */
+    @PostMapping("/{trackId}")
+    @EventAuth(mode = "ADMIN", var = "TRACK")
+    public ResponseEntity<Result<PhaseIdVO>> createPhase(
+            @PathVariable Integer trackId, @RequestBody @Valid CreatePhaseDTO dto) {
+        return Result.success(trackService.createPhase(dto, trackId), "创建成功");
     }
 }

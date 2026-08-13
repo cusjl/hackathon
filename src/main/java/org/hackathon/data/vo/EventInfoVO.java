@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
-public class GetEventVO {
+public class EventInfoVO {
     private Integer eventId;
     private String name;
     private EventStatus status;
@@ -18,6 +18,6 @@ public class GetEventVO {
     private String introduction;
     private String tags;
     private String notice;
-    private List<BriefTrackVO> tracks;
+    private List<TrackBriefVO> tracks;
     private Integer version;
 }

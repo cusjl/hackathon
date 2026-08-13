@@ -4,7 +4,7 @@ import lombok.Data;
 import org.hackathon.data.enums.AuthorityEnum;
 
 @Data
-public class AuthorityVO {
+public class AuthorityEventVO {
     private AuthorityEnum type;
     private Integer eventId;
     private String eventName;

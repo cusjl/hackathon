@@ -8,9 +8,10 @@ import org.hackathon.annotation.EventAuth;
 import org.hackathon.data.dto.CreateExUserDTO;
 import org.hackathon.data.dto.UpdateExUserDTO;
 import org.hackathon.data.dto.UpdatePasswordDTO;
-import org.hackathon.data.vo.CreateExUserVO;
+import org.hackathon.data.vo.UserIdVO;
+import org.hackathon.data.vo.UserInfoVO;
 import org.hackathon.data.vo.Result;
-import org.hackathon.data.vo.GetExUserVO;
+import org.hackathon.data.vo.ExUserInfoVO;
 import org.hackathon.security.jwt.LocalJwt;
 import org.hackathon.service.UserService;
 import org.springframework.http.ResponseEntity;
@@ -23,28 +24,39 @@ public class UserController {
     private final UserService userService;
 
     /**
-     * 获取用户信息
+     * 外部用户自查信息
      * @return vo
      */
     @GetMapping
     @Auth(onlyExtern = true)
-    public ResponseEntity<Result<GetExUserVO>> getExUser(HttpServletRequest request) {
+    public ResponseEntity<Result<ExUserInfoVO>> getExUser(HttpServletRequest request) {
         LocalJwt jwt = (LocalJwt) request.getAttribute("jwt");
         return Result.success(userService.getExUser(jwt.getUserId()), "获取成功");
     }
 
     /**
-     * 修改用户信息
-     * @param dto PATCH风格dto，仅修改非null值
-     * @return ok/noUpdate
+     * 查询用户详情
+     * @param userId 用户id
+     * @return 用户详情
      */
-    @PatchMapping
+    @GetMapping("/{userId}")
+    @Auth
+    public ResponseEntity<Result<UserInfoVO>> getUser(@PathVariable Integer userId) {
+        return Result.success(userService.getUserById(userId), "获取成功");
+    }
+
+    /**
+     * 修改外部用户信息
+     * @param dto dto
+     * @return ok
+     */
+    @PutMapping
     @Auth(onlyExtern = true)
     public ResponseEntity<Result<Void>> updateExUser(
             @RequestBody @Valid UpdateExUserDTO dto, HttpServletRequest request) {
         LocalJwt jwt = (LocalJwt) request.getAttribute("jwt");
-        if (userService.updateExUser(dto, jwt.getUserId())) return Result.ok();
-        else return Result.noUpdate();
+        userService.updateExUser(dto, jwt.getUserId());
+        return Result.ok();
     }
 
     /**
@@ -70,7 +82,7 @@ public class UserController {
     @PostMapping("/admin/{eventId}")
     @Auth(onlySuper = true)
     @EventAuth(mode = "GUEST", var = "EVENT")
-    public ResponseEntity<Result<CreateExUserVO>> createExAdmin(
+    public ResponseEntity<Result<UserIdVO>> createExAdmin(
             @PathVariable Integer eventId, @RequestBody @Valid CreateExUserDTO dto) {
         return Result.success(userService.createExAdmin(dto, eventId), "创建成功");
     }
@@ -83,7 +95,7 @@ public class UserController {
      */
     @PostMapping("/judge/{eventId}")
     @EventAuth(mode = "ADMIN", var = "EVENT")
-    public ResponseEntity<Result<CreateExUserVO>> createExUser(
+    public ResponseEntity<Result<UserIdVO>> createExUser(
             @PathVariable Integer eventId, @RequestBody @Valid CreateExUserDTO dto) {
         return Result.success(userService.createExJudge(dto, eventId), "创建成功");
     }

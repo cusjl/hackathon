@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.hackathon.data.po.Authority;
 import org.hackathon.data.po.Event;
-import org.hackathon.data.vo.AuthorityVO;
+import org.hackathon.data.vo.AuthorityEventVO;
 import org.hackathon.mapper.AuthorityMapper;
 import org.hackathon.mapper.EventMapper;
 import org.hackathon.security.jwt.LocalJwt;
@@ -42,7 +42,7 @@ public class AuthService {
         return user.getUserId();
     }
 
-    public List<AuthorityVO> getAuthorityVOList(Integer userId) {
+    public List<AuthorityEventVO> getAuthorityVOList(Integer userId) {
         List<Authority> list = authorityMapper.selectList(
                 new LambdaQueryWrapper<Authority>().eq(Authority::getUserId, userId)
         );
@@ -56,7 +56,7 @@ public class AuthService {
                 : eventMapper.selectByIds(ids).stream()
                   .collect(Collectors.toMap(Event::getEventId, Event::getName));
         return list.stream().map(po -> {
-            AuthorityVO vo = new AuthorityVO();
+            AuthorityEventVO vo = new AuthorityEventVO();
             vo.setType(po.getType());
             vo.setEventId(po.getEventId());
             if (po.getEventId() != null) {

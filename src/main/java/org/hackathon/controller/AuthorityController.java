@@ -5,8 +5,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.hackathon.annotation.Auth;
 import org.hackathon.annotation.EventAuth;
-import org.hackathon.data.dto.AuthorityDTO;
-import org.hackathon.data.vo.UserAuthorityVO;
+import org.hackathon.data.dto.UserIdDTO;
+import org.hackathon.data.vo.AuthorityUserVO;
 import org.hackathon.data.vo.Result;
 import org.hackathon.security.jwt.LocalJwt;
 import org.hackathon.service.AuthorityService;
@@ -29,7 +29,7 @@ public class AuthorityController {
      */
     @PostMapping("/super")
     @Auth(onlySuper = true)
-    public ResponseEntity<Result<Void>> createSuper(@RequestBody @Valid AuthorityDTO dto) {
+    public ResponseEntity<Result<Void>> createSuper(@RequestBody @Valid UserIdDTO dto) {
         authorityService.createSuper(dto.getUserId());
         return Result.ok();
     }
@@ -55,7 +55,7 @@ public class AuthorityController {
     @PostMapping("/admin/{eventId}")
     @Auth(onlySuper = true)
     public ResponseEntity<Result<Void>> createAdmin(
-            @PathVariable Integer eventId, @RequestBody @Valid AuthorityDTO dto) {
+            @PathVariable Integer eventId, @RequestBody @Valid UserIdDTO dto) {
         authorityService.createAdmin(dto.getUserId(), eventId);
         return Result.ok();
     }
@@ -69,7 +69,7 @@ public class AuthorityController {
     @DeleteMapping("/admin/{eventId}")
     @Auth(onlySuper = true)
     public ResponseEntity<Result<Void>> deleteAdmin(
-            @PathVariable Integer eventId, @RequestBody @Valid AuthorityDTO dto) {
+            @PathVariable Integer eventId, @RequestBody @Valid UserIdDTO dto) {
         authorityService.deleteAdmin(dto.getUserId(), eventId);
         return Result.ok();
     }
@@ -97,7 +97,7 @@ public class AuthorityController {
     @PostMapping("/judge/{eventId}")
     @EventAuth(mode = "ADMIN", var = "EVENT")
     public ResponseEntity<Result<Void>> createJudge(
-            @PathVariable Integer eventId, @RequestBody @Valid AuthorityDTO dto) {
+            @PathVariable Integer eventId, @RequestBody @Valid UserIdDTO dto) {
         authorityService.createJudge(dto.getUserId(), eventId);
         return Result.ok();
     }
@@ -111,7 +111,7 @@ public class AuthorityController {
     @DeleteMapping("/judge/{eventId}")
     @EventAuth(mode = "ADMIN", var = "EVENT")
     public ResponseEntity<Result<Void>> deleteJudge(
-            @PathVariable Integer eventId, @RequestBody @Valid AuthorityDTO dto) {
+            @PathVariable Integer eventId, @RequestBody @Valid UserIdDTO dto) {
         authorityService.deleteJudge(dto.getUserId(), eventId);
         return Result.ok();
     }
@@ -137,7 +137,7 @@ public class AuthorityController {
      */
     @GetMapping("/{eventId}")
     @EventAuth(mode = "GUEST", var = "EVENT")
-    public ResponseEntity<Result<List<UserAuthorityVO>>> getAuthorityListByEvent(
+    public ResponseEntity<Result<List<AuthorityUserVO>>> getAuthorityListByEvent(
             @PathVariable Integer eventId) {
         return Result.success(authorityService.getAuthorityListByEvent(eventId), "获取成功");
     }

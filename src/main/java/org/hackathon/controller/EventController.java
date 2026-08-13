@@ -7,9 +7,9 @@ import org.hackathon.annotation.EventAuth;
 import org.hackathon.data.dto.CreateEventDTO;
 import org.hackathon.data.dto.CreateTrackDTO;
 import org.hackathon.data.dto.UpdateEventDTO;
-import org.hackathon.data.vo.CreateEventVO;
-import org.hackathon.data.vo.CreateTrackVO;
-import org.hackathon.data.vo.GetEventVO;
+import org.hackathon.data.vo.EventIdVO;
+import org.hackathon.data.vo.TrackIdVO;
+import org.hackathon.data.vo.EventInfoVO;
 import org.hackathon.data.vo.Result;
 import org.hackathon.service.EventService;
 import org.springframework.http.ResponseEntity;
@@ -29,8 +29,8 @@ public class EventController {
      */
     @PostMapping
     @Auth(onlySuper = true)
-    public ResponseEntity<Result<CreateEventVO>> createEvent(@RequestBody @Valid CreateEventDTO dto){
-        return Result.success(new CreateEventVO(eventService.createEvent(dto)), "创建成功");
+    public ResponseEntity<Result<EventIdVO>> createEvent(@RequestBody @Valid CreateEventDTO dto){
+        return Result.success(new EventIdVO(eventService.createEvent(dto)), "创建成功");
     }
 
     /**
@@ -41,9 +41,9 @@ public class EventController {
      */
     @PostMapping("/{eventId}/track")
     @EventAuth(mode = "ADMIN", var = "EVENT")
-    public ResponseEntity<Result<CreateTrackVO>> createTrack(
+    public ResponseEntity<Result<TrackIdVO>> createTrack(
             @PathVariable Integer eventId, @RequestBody @Valid CreateTrackDTO dto){
-        return Result.success(new CreateTrackVO(eventService.createTrack(dto, eventId)), "创建成功");
+        return Result.success(new TrackIdVO(eventService.createTrack(dto, eventId)), "创建成功");
     }
 
     /**
@@ -53,21 +53,21 @@ public class EventController {
      */
     @GetMapping("/{eventId}")
     @EventAuth(mode = "GUEST", var = "EVENT")
-    public ResponseEntity<Result<GetEventVO>> getEvent(@PathVariable Integer eventId){
+    public ResponseEntity<Result<EventInfoVO>> getEvent(@PathVariable Integer eventId){
         return Result.success(eventService.getEvent(eventId), "获取成功");
     }
 
     /**
      * 更新赛事
      * @param eventId 赛事id
-     * @param dto PATCH风格dto
+     * @param dto 全量dto
      * @return ok
      */
-    @PatchMapping("/{eventId}")
+    @PutMapping("/{eventId}")
     @EventAuth(mode = "ADMIN", var = "EVENT")
     public ResponseEntity<Result<Void>> updateEvent(
             @PathVariable Integer eventId, @RequestBody @Valid UpdateEventDTO dto) {
-        if (eventService.updateEvent(dto, eventId)) return Result.ok();
-        else return Result.noUpdate();
+        eventService.updateEvent(dto, eventId);
+        return Result.ok();
     }
 }

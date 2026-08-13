@@ -12,5 +12,5 @@ public class LoginVO {
     private String name;
     private Boolean studentFlag;
     private String casId;
-    private List<AuthorityVO> authorities;
+    private List<AuthorityEventVO> authorities;
 }

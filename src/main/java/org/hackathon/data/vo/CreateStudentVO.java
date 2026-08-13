@@ -13,5 +13,5 @@ public class CreateStudentVO {
     private Boolean studentFlag;
     private String casId;
     private Boolean existed;
-    private List<AuthorityVO> authorities;
+    private List<AuthorityEventVO> authorities;
 }

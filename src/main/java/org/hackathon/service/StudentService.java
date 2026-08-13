@@ -11,7 +11,7 @@ import org.hackathon.data.po.Student;
 import org.hackathon.data.po.StudentTag;
 import org.hackathon.data.po.User;
 import org.hackathon.data.vo.CreateStudentVO;
-import org.hackathon.data.vo.GetStudentVO;
+import org.hackathon.data.vo.StudentInfoVO;
 import org.hackathon.exception.BusinessException;
 import org.hackathon.mapper.ExUserMapper;
 import org.hackathon.mapper.StudentMapper;
@@ -109,53 +109,33 @@ public class StudentService {
         );
     }
 
-    public GetStudentVO getStudent(Integer userId) {
+    public StudentInfoVO getStudent(Integer userId) {
         User user = userMapper.selectById(userId);
         Student student = studentMapper.selectById(userId);
         if (user == null || student == null) {
             throw new BusinessException(ResultCode.STUDENT_NOT_EXIST);
         }
-        return new GetStudentVO(
+        return new StudentInfoVO(
                 user.getPhone(), user.getEmail(), student.getCampus(), student.getMajor(),
                 student.getIntroduction(), student.getTagsAsList()
         );
     }
 
     @Transactional
-    public boolean updateStudent(UpdateStudentDTO dto, Integer userId) {
-        boolean userUpdate = userService.updateContact(
-                new UpdateContactDTO(dto.getPhone(), dto.getEmail()), userId
-        );
+    public void updateStudent(UpdateStudentDTO dto, Integer userId) {
+        userService.updateContact(new UpdateContactDTO(dto.getPhone(), dto.getEmail()), userId);
         Student student = studentMapper.selectById(userId);
-        boolean update = false;
         if (student == null) {
             throw new BusinessException(ResultCode.STUDENT_NOT_EXIST);
         }
-        if (dto.getCampus() != null && !dto.getCampus().equals(student.getCampus())) {
-            student.setCampus(dto.getCampus());
-            update = true;
-        }
-        if (dto.getMajor() != null && !dto.getMajor().equals(student.getMajor())) {
-            student.setMajor(dto.getMajor());
-            update = true;
-        }
-        if (dto.getIntroduction() != null && !dto.getIntroduction().equals(student.getIntroduction())) {
-            student.setIntroduction(dto.getIntroduction());
-            update = true;
-        }
-        if (dto.getTags() != null) {
-            verifyTags(dto.getTags());
-            String tags = String.join(",", dto.getTags());
-            if (!tags.equals(student.getTags())) {
-                student.setTags(tags);
-                update = true;
-            }
-        }
-        if (update) {
-            student.setUpdateTime(LocalDateTime.now());
-            studentMapper.updateById(student);
-        }
-        return userUpdate || update;
+        student.setCampus(dto.getCampus());
+        student.setMajor(dto.getMajor());
+        student.setIntroduction(dto.getIntroduction());
+        verifyTags(dto.getTags());
+        String tags = String.join(",", dto.getTags());
+        student.setTags(tags);
+        student.setUpdateTime(LocalDateTime.now());
+        studentMapper.updateById(student);
     }
 
 }

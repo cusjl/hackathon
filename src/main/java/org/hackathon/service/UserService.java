@@ -10,12 +10,13 @@ import org.hackathon.data.enums.AuthorityEnum;
 import org.hackathon.data.enums.ResultCode;
 import org.hackathon.data.po.Authority;
 import org.hackathon.data.po.ExUser;
+import org.hackathon.data.po.Student;
 import org.hackathon.data.po.User;
-import org.hackathon.data.vo.CreateExUserVO;
-import org.hackathon.data.vo.GetExUserVO;
+import org.hackathon.data.vo.*;
 import org.hackathon.exception.BusinessException;
 import org.hackathon.mapper.AuthorityMapper;
 import org.hackathon.mapper.ExUserMapper;
+import org.hackathon.mapper.StudentMapper;
 import org.hackathon.mapper.UserMapper;
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ public class UserService {
     private final UserMapper userMapper;
     private final ExUserMapper exUserMapper;
     private final AuthorityMapper authorityMapper;
+    private final StudentMapper studentMapper;
 
     public void verifyPhone(String phone) {
         if (userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getPhone, phone)) > 0) {
@@ -42,52 +44,70 @@ public class UserService {
         }
     }
 
-    public GetExUserVO getExUser(Integer userId) {
+    public ExUserInfoVO getExUser(Integer userId) {
         User user = userMapper.selectById(userId);
         ExUser exUser = exUserMapper.selectById(userId);
         if (user == null || exUser == null) {
             throw new BusinessException(ResultCode.USER_NOT_EXIST);
         }
-        return new GetExUserVO(user.getPhone(), user.getEmail(),
+        return new ExUserInfoVO(user.getPhone(), user.getEmail(),
                 exUser.getOnCampus(), exUser.getOrganization());
     }
 
-    public boolean updateContact(UpdateContactDTO dto, Integer userId) {
+    public UserInfoVO getUserById(Integer userId) {
         User user = userMapper.selectById(userId);
-        boolean update = false;
         if (user == null) {
             throw new BusinessException(ResultCode.USER_NOT_EXIST);
         }
-        if (dto.getPhone() != null && !dto.getPhone().equals(user.getPhone())) {
-            verifyPhone(dto.getPhone());
-            user.setPhone(dto.getPhone());
-            update = true;
+        UserInfoVO vo = new UserInfoVO();
+        vo.setUserId(userId);
+        vo.setStudentFlag(user.getStudentFlag());
+        vo.setPhone(user.getPhone());
+        vo.setEmail(user.getEmail());
+        if (user.getStudentFlag()) {
+            Student student = studentMapper.selectById(userId);
+            if (student == null) throw new BusinessException(ResultCode.STUDENT_NOT_EXIST);
+            StudentBriefVO brief = new StudentBriefVO(
+                    student.getCampus(), student.getMajor(), student.getIntroduction(),
+                    student.getTagsAsList()
+            );
+            vo.setName(student.getName());
+            vo.setStudent(brief);
+        } else {
+            ExUser exUser = exUserMapper.selectById(userId);
+            if (exUser == null) throw new BusinessException(ResultCode.EX_USER_NOT_EXIST);
+            ExUserBriefVO brief = new ExUserBriefVO(
+                    exUser.getOnCampus(), exUser.getOrganization()
+            );
+            vo.setName(user.getUsername());
+            vo.setExUser(brief);
         }
-        if (dto.getEmail() != null && !dto.getEmail().equals(user.getEmail())) {
-            verifyEmail(dto.getEmail());
-            user.setEmail(dto.getEmail());
-            update = true;
-        }
-        if (update) {
-            user.setUpdateTime(LocalDateTime.now());
-            userMapper.updateById(user);
-        }
-        return update;
+        return vo;
     }
 
-    public boolean updateExUser(UpdateExUserDTO dto, Integer userId) {
-        boolean userUpdate = updateContact(new UpdateContactDTO(dto.getPhone(), dto.getEmail()), userId);
-        ExUser exUser = exUserMapper.selectById(userId);
-        if (exUser == null) {
+    public void updateContact(UpdateContactDTO dto, Integer userId) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
             throw new BusinessException(ResultCode.USER_NOT_EXIST);
         }
-        if (dto.getOrganization() != null && !dto.getOrganization().equals(exUser.getOrganization())) {
-            exUser.setOrganization(dto.getOrganization());
-            exUser.setUpdateTime(LocalDateTime.now());
-            exUserMapper.updateById(exUser);
-            return true;
+        verifyPhone(dto.getPhone());
+        user.setPhone(dto.getPhone());
+        verifyEmail(dto.getEmail());
+        user.setEmail(dto.getEmail());
+        user.setUpdateTime(LocalDateTime.now());
+        userMapper.updateById(user);
+    }
+
+    @Transactional
+    public void updateExUser(UpdateExUserDTO dto, Integer userId) {
+        updateContact(new UpdateContactDTO(dto.getPhone(), dto.getEmail()), userId);
+        ExUser exUser = exUserMapper.selectById(userId);
+        if (exUser == null) {
+            throw new BusinessException(ResultCode.EX_USER_NOT_EXIST);
         }
-        return userUpdate;
+        exUser.setOrganization(dto.getOrganization());
+        exUser.setUpdateTime(LocalDateTime.now());
+        exUserMapper.updateById(exUser);
     }
 
     public void updatePassword(UpdatePasswordDTO dto, Integer userId) {
@@ -106,7 +126,7 @@ public class UserService {
     }
 
     //@Transactional
-    private CreateExUserVO createExUser(CreateExUserDTO dto) {
+    private UserIdVO createExUser(CreateExUserDTO dto) {
         verifyPhone(dto.getPhone());
         verifyEmail(dto.getEmail());
         User user = new User(
@@ -117,12 +137,12 @@ public class UserService {
         System.out.println("iunnim");
         exUserMapper.insert(new ExUser(user.getUserId(), dto.getOnCampus(), dto.getOrganization(),
                 LocalDateTime.now(), LocalDateTime.now()));
-        return new CreateExUserVO(user.getUserId());
+        return new UserIdVO(user.getUserId());
     }
 
     @Transactional
-    public CreateExUserVO createExAdmin(CreateExUserDTO dto, Integer eventId) {
-        CreateExUserVO vo = createExUser(dto);
+    public UserIdVO createExAdmin(CreateExUserDTO dto, Integer eventId) {
+        UserIdVO vo = createExUser(dto);
         Authority authority = new Authority(null, vo.getUserId(), AuthorityEnum.ADMIN,
                 eventId, LocalDateTime.now());
         authorityMapper.insert(authority);
@@ -130,8 +150,8 @@ public class UserService {
     }
 
     @Transactional
-    public CreateExUserVO createExJudge(CreateExUserDTO dto, Integer eventId) {
-        CreateExUserVO vo = createExUser(dto);
+    public UserIdVO createExJudge(CreateExUserDTO dto, Integer eventId) {
+        UserIdVO vo = createExUser(dto);
         Authority authority = new Authority(null, vo.getUserId(), AuthorityEnum.JUDGE,
                 eventId, LocalDateTime.now());
         authorityMapper.insert(authority);

@@ -29,6 +29,7 @@ public enum ResultCode {
     PHONE_CONFLICT(2002, HttpStatus.CONFLICT, "手机号已被占用"),
     EMAIL_CONFLICT(2003, HttpStatus.CONFLICT, "邮箱已被占用"),
     PASSWORD_INCORRECT(2004, HttpStatus.UNAUTHORIZED, "密码错误"),
+    EX_USER_NOT_EXIST(2005, HttpStatus.NOT_FOUND, "外部用户不存在"),
     ALREADY_REGISTERED(2011, HttpStatus.CONFLICT, "学生已注册"),
     TAG_UNAVAILABLE(2012, HttpStatus.CONFLICT, "包含不可用的标签"),
     STUDENT_NOT_EXIST(2013, HttpStatus.NOT_FOUND, "学生不存在"),
@@ -36,13 +37,16 @@ public enum ResultCode {
 
     //赛事相关
     EVENT_NOT_FOUND(3001, HttpStatus.NOT_FOUND, "赛事不存在"),
-    EVENT_TIME_CONFLICT(3002, HttpStatus.CONFLICT, "赛事时间非法"),
+    INVALID_EVENT_TIME(3002, HttpStatus.CONFLICT, "赛事时间非法"),
     EVENT_ALREADY_REG(3003, HttpStatus.FORBIDDEN, "赛事已开始报名"),
-    EVENT_ALREADY_OFF(3004, HttpStatus.FORBIDDEN, "赛事已经结束"),
+    EVENT_ALREADY_END(3004, HttpStatus.FORBIDDEN, "赛事已经结束"),
     TRACK_NOT_FOUND(3011, HttpStatus.NOT_FOUND, "赛道不存在"),
     TRACK_ALREADY_EXIST(3012, HttpStatus.CONFLICT, "赛道已存在"),
     PHASE_NOT_FOUND(3021, HttpStatus.NOT_FOUND, "轮次不存在"),
     PHASE_EVENT_TIME_CONFLICT(3022, HttpStatus.CONFLICT, "轮次时间与赛事冲突"),
+    INVALID_PHASE_TIME(3023, HttpStatus.CONFLICT, "轮次时间非法"),
+    PHASE_TIME_CONFLICT(3024, HttpStatus.CONFLICT, "与其他轮次时间冲突"),
+    PHASE_ALREADY_EXIST(3025, HttpStatus.CONFLICT, "轮次已存在"),
 
     //通用
     //PARAM_ERROR的msg通过Validation抛出具体错误，详见各参数message
