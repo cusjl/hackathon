@@ -1,9 +1,10 @@
-package org.hackathon.data.po;
+package org.hackathon.data.dto;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
-public class SubmissionConfig {
+public class UpdatePhaseConfigDTO {
     private Boolean repository = false;
     private Boolean OpenSource = false;
     private String licenseType;
@@ -15,4 +16,6 @@ public class SubmissionConfig {
     private Boolean website = false;
     private Boolean markdown = false;
     private Boolean declare = false;
+    @NotNull(message = "版本号不能为空")
+    private Integer version;
 }

@@ -10,11 +10,11 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.MissingPathVariableException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.stream.Collectors;
 
@@ -57,12 +57,12 @@ public class GlobalExceptionHandler {
         return Result.error(ResultCode.PARAM_ERROR, message);
     }
 
-    // ==================== 5. 缺少路径变量 ====================
-    @ExceptionHandler(MissingPathVariableException.class)
-    public ResponseEntity<Result<Void>> handlePathVariable(MissingPathVariableException e) {
-        String message = "请求路径缺少必要的参数: " + e.getVariableName();
+    // ==================== 5. 路径请求错误 ====================
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Result<Void>> handlePathVariable(NoResourceFoundException e) {
+        String message = "请求路径无资源: /" + e.getResourcePath();
         log.warn(message);
-        return Result.error(ResultCode.PARAM_ERROR, message);
+        return Result.error(ResultCode.PATH_NOT_FOUND, message);
     }
 
     // ==================== 6. 参数类型不匹配 ====================
@@ -94,10 +94,7 @@ public class GlobalExceptionHandler {
     // ==================== 9. 资源重复 =====================
     @ExceptionHandler(DuplicateKeyException.class)
     public ResponseEntity<Result<Void>> handleDuplicateKey(DuplicateKeyException e) {
-        // 日志记录下详细信息，方便后端排查（比如打印出具体是哪个约束）
         log.warn("数据插入/更新失败，违反唯一约束，详细信息：{}", e.getMessage());
-
-        // 返回给前端通用且友好的提示（不透露数据库底层细节）
         return Result.error(ResultCode.RESOURCE_CONFLICT);
     }
 

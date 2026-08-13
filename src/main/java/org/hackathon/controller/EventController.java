@@ -1,9 +1,11 @@
 package org.hackathon.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.hackathon.annotation.Auth;
 import org.hackathon.annotation.EventAuth;
+import org.hackathon.data.context.EventContext;
 import org.hackathon.data.dto.CreateEventDTO;
 import org.hackathon.data.dto.CreateTrackDTO;
 import org.hackathon.data.dto.UpdateEventDTO;
@@ -41,9 +43,10 @@ public class EventController {
      */
     @PostMapping("/{eventId}/track")
     @EventAuth(mode = "ADMIN", var = "EVENT")
-    public ResponseEntity<Result<TrackIdVO>> createTrack(
-            @PathVariable Integer eventId, @RequestBody @Valid CreateTrackDTO dto){
-        return Result.success(new TrackIdVO(eventService.createTrack(dto, eventId)), "创建成功");
+    public ResponseEntity<Result<TrackIdVO>> createTrack(@PathVariable Integer eventId,
+            @RequestBody @Valid CreateTrackDTO dto, HttpServletRequest request){
+        EventContext context = (EventContext) request.getAttribute("context");
+        return Result.success(new TrackIdVO(eventService.createTrack(dto, context)), "创建成功");
     }
 
     /**
@@ -53,8 +56,10 @@ public class EventController {
      */
     @GetMapping("/{eventId}")
     @EventAuth(mode = "GUEST", var = "EVENT")
-    public ResponseEntity<Result<EventInfoVO>> getEvent(@PathVariable Integer eventId){
-        return Result.success(eventService.getEvent(eventId), "获取成功");
+    public ResponseEntity<Result<EventInfoVO>> getEvent(@PathVariable Integer eventId,
+            HttpServletRequest request){
+        EventContext context = (EventContext) request.getAttribute("context");
+        return Result.success(eventService.getEvent(context), "获取成功");
     }
 
     /**
@@ -65,9 +70,10 @@ public class EventController {
      */
     @PutMapping("/{eventId}")
     @EventAuth(mode = "ADMIN", var = "EVENT")
-    public ResponseEntity<Result<Void>> updateEvent(
-            @PathVariable Integer eventId, @RequestBody @Valid UpdateEventDTO dto) {
-        eventService.updateEvent(dto, eventId);
+    public ResponseEntity<Result<Void>> updateEvent(@PathVariable Integer eventId,
+            @RequestBody @Valid UpdateEventDTO dto, HttpServletRequest request) {
+        EventContext context = (EventContext) request.getAttribute("context");
+        eventService.updateEvent(dto, context);
         return Result.ok();
     }
 }

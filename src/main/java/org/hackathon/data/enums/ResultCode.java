@@ -53,6 +53,7 @@ public enum ResultCode {
     PARAM_ERROR(4000, HttpStatus.BAD_REQUEST, "参数错误"),
     RESOURCE_CONFLICT(4001, HttpStatus.CONFLICT, "资源冲突"),
     RESOURCE_UPDATED(4002, HttpStatus.CONFLICT, "存在已更新资源"),
+    PATH_NOT_FOUND(4003, HttpStatus.NOT_FOUND, "该路径不存在资源"),
 
     INTERNAL_ERROR(5000, HttpStatus.INTERNAL_SERVER_ERROR, "系统内部错误"),
     ;

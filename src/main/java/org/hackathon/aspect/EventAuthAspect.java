@@ -9,9 +9,11 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.hackathon.annotation.EventAuth;
+import org.hackathon.data.context.EventContext;
 import org.hackathon.data.enums.AuthorityEnum;
 import org.hackathon.data.enums.ResultCode;
 import org.hackathon.data.po.Authority;
+import org.hackathon.data.po.Event;
 import org.hackathon.data.po.Phase;
 import org.hackathon.data.po.Track;
 import org.hackathon.exception.BusinessException;
@@ -51,26 +53,27 @@ public class EventAuthAspect {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         EventAuth auth = signature.getMethod().getAnnotation(EventAuth.class);
         String var = auth.var().toLowerCase();
-        if (!List.of("event", "track", "phases").contains(var)) {
+        if (!List.of("event", "track", "phase").contains(var)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "@EventAuth参数错误：var = " + var.toUpperCase());
+        }
+        String mode = auth.mode().toUpperCase();
+        if (!List.of("GUEST", "ADMIN", "JUDGE").contains(mode)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "@EventAuth参数错误：mode = " + mode);
         }
         Integer id = extractId(request, var);
         if (id == null) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "未解析到" + var + "Id");
         }
-        String mode = auth.mode().toUpperCase();
+        EventContext context = verifyExistence(var, id);
+        request.setAttribute("context", context);
         if (mode.equals("GUEST")) {
             return joinPoint.proceed();
         }
         LocalJwt jwt = localJwtUtils.extractJwt(request);
-        if (!(mode.equals("ADMIN") || mode.equals("JUDGE"))) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "@EventAuth参数错误：mode = " + mode);
-        }
-        Integer eventId = verifyExistence(var, id);
         List<Authority> list = authorityMapper.selectList(
                 new LambdaQueryWrapper<Authority>().eq(Authority::getUserId, jwt.getUserId())
                         .and(w -> w.eq(Authority::getType, AuthorityEnum.SUPER)
-                                .or().eq(Authority::getEventId, eventId))
+                                .or().eq(Authority::getEventId, context.getEvent().getEventId()))
         );
         boolean isAdmin = false, isJudge = false;
         for (Authority authority : list) {
@@ -104,24 +107,27 @@ public class EventAuthAspect {
         return null;
     }
 
-    private Integer verifyExistence(String var, Integer id) {
+    private EventContext verifyExistence(String var, Integer id) {
+        EventContext context = new EventContext();
         Integer trackId = null, eventId = null;
         switch (var) {
             case "phase":
                 Phase phase = phaseMapper.selectById(id);
                 if (phase == null) throw new BusinessException(ResultCode.PHASE_NOT_FOUND);
+                context.setPhase(phase);
                 trackId = phase.getTrackId();
             case "track":
                 if (var.equals("track")) trackId = id;
                 Track track = trackMapper.selectById(trackId);
                 if (track == null) throw new BusinessException(ResultCode.TRACK_NOT_FOUND);
+                context.setTrack(track);
                 eventId = track.getEventId();
             default:
                 if (var.equals("event")) eventId = id;
-                if (eventMapper.selectById(eventId) == null) {
-                    throw new BusinessException(ResultCode.EVENT_NOT_FOUND);
-                }
-            return eventId;
+                Event event = eventMapper.selectById(eventId);
+                if (event == null) throw new BusinessException(ResultCode.EVENT_NOT_FOUND);
+                context.setEvent(event);
+            return context;
         }
     }
 }

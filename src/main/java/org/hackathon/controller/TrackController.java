@@ -1,8 +1,10 @@
 package org.hackathon.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.hackathon.annotation.EventAuth;
+import org.hackathon.data.context.EventContext;
 import org.hackathon.data.dto.CreatePhaseDTO;
 import org.hackathon.data.dto.UpdateTrackDTO;
 import org.hackathon.data.vo.PhaseIdVO;
@@ -27,8 +29,10 @@ public class TrackController {
      */
     @GetMapping("/{trackId}")
     @EventAuth(mode = "GUEST", var = "TRACK")
-    public ResponseEntity<Result<TrackInfoVO>> getTrack(@PathVariable Integer trackId) {
-        return Result.success(trackService.getTrack(trackId), "获取成功");
+    public ResponseEntity<Result<TrackInfoVO>> getTrack(@PathVariable Integer trackId,
+            HttpServletRequest request) {
+        EventContext context = (EventContext) request.getAttribute("context");
+        return Result.success(trackService.getTrack(context), "获取成功");
     }
 
     /**
@@ -39,9 +43,10 @@ public class TrackController {
      */
     @PutMapping("/{trackId}")
     @EventAuth(mode = "ADMIN", var = "TRACK")
-    public ResponseEntity<Result<Void>> updateTrack(
-            @PathVariable Integer trackId, @RequestBody @Valid UpdateTrackDTO dto) {
-        trackService.updateTrack(dto, trackId);
+    public ResponseEntity<Result<Void>> updateTrack(@PathVariable Integer trackId,
+            @RequestBody @Valid UpdateTrackDTO dto, HttpServletRequest request) {
+        EventContext context = (EventContext) request.getAttribute("context");
+        trackService.updateTrack(dto, context);
         return Result.ok();
     }
 
@@ -62,10 +67,11 @@ public class TrackController {
      * @param dto 轮次信息
      * @return 轮次id
      */
-    @PostMapping("/{trackId}")
+    @PostMapping("/{trackId}/phase")
     @EventAuth(mode = "ADMIN", var = "TRACK")
-    public ResponseEntity<Result<PhaseIdVO>> createPhase(
-            @PathVariable Integer trackId, @RequestBody @Valid CreatePhaseDTO dto) {
-        return Result.success(trackService.createPhase(dto, trackId), "创建成功");
+    public ResponseEntity<Result<PhaseIdVO>> createPhase(@PathVariable Integer trackId,
+            @RequestBody @Valid CreatePhaseDTO dto, HttpServletRequest request) {
+        EventContext context = (EventContext) request.getAttribute("context");
+        return Result.success(trackService.createPhase(dto, context), "创建成功");
     }
 }

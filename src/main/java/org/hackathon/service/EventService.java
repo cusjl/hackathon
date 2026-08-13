@@ -3,6 +3,7 @@ package org.hackathon.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import lombok.RequiredArgsConstructor;
+import org.hackathon.data.context.EventContext;
 import org.hackathon.data.dto.CreateEventDTO;
 import org.hackathon.data.dto.CreateTrackDTO;
 import org.hackathon.data.dto.UpdateEventDTO;
@@ -47,28 +48,28 @@ public class EventService {
         return event.getEventId();
     }
 
-    public Integer createTrack(CreateTrackDTO dto, Integer eventId) {
-        Event event = eventMapper.selectById(eventId);
+    public Integer createTrack(CreateTrackDTO dto, EventContext context) {
+        Event event = context.getEvent();
         if (event.getRegBeg().isBefore(LocalDateTime.now())) {
             throw new BusinessException(ResultCode.EVENT_ALREADY_REG);
         }
         LambdaUpdateWrapper<Track> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(Track::getEventId, eventId).eq(Track::getName, dto.getName());
+        wrapper.eq(Track::getEventId, event.getEventId()).eq(Track::getName, dto.getName());
         if (trackMapper.selectCount(wrapper) > 0) {
             throw new BusinessException(ResultCode.TRACK_ALREADY_EXIST);
         }
-        Track track = new Track(null, eventId, dto.getName(), dto.getDescMd(), 1,
-                LocalDateTime.now(), LocalDateTime.now());
+        Track track = new Track(null, event.getEventId(), dto.getName(), dto.getDescMd(),
+                1, LocalDateTime.now(), LocalDateTime.now());
         trackMapper.insert(track);
         return track.getTrackId();
     }
 
-    public EventInfoVO getEvent(Integer eventId) {
-        Event event = eventMapper.selectById(eventId);
+    public EventInfoVO getEvent(EventContext context) {
+        Event event = context.getEvent();
         EventInfoVO vo = new EventInfoVO();
         BeanUtils.copyProperties(event, vo);
         List<TrackBriefVO> list = trackMapper.selectList(
-                new LambdaQueryWrapper<Track>().eq(Track::getEventId, eventId)
+                new LambdaQueryWrapper<Track>().eq(Track::getEventId, event.getEventId())
                         .select(Track::getTrackId, Track::getName)
         ).stream().map(po -> new TrackBriefVO(po.getTrackId(), po.getName())).toList();
         vo.setTracks(list);
@@ -81,9 +82,9 @@ public class EventService {
         return trackMapper.selectList(wrapper).stream().map(Track::getTrackId).toList();
     }
 
-    public void updateEvent(UpdateEventDTO dto, Integer eventId) {
+    public void updateEvent(UpdateEventDTO dto, EventContext context) {
         verifyEventTime(dto.getRegBeg(), dto.getRegEnd(), dto.getLiveBeg(), dto.getLiveEnd());
-        Event event = eventMapper.selectById(eventId);
+        Event event = context.getEvent();
         if (event.getRegBeg().isBefore(LocalDateTime.now())) {
             throw new BusinessException(ResultCode.EVENT_ALREADY_REG);
         }
@@ -94,7 +95,7 @@ public class EventService {
         event.setRegEnd(dto.getRegEnd());
         event.setLiveBeg(dto.getLiveBeg());
         event.setLiveEnd(dto.getLiveEnd());
-        List<Integer> trackIds = getTrackIds(eventId);
+        List<Integer> trackIds = getTrackIds(event.getEventId());
         LambdaUpdateWrapper<Phase> wrapper = new LambdaUpdateWrapper<>();
         wrapper.in(Phase::getTrackId, trackIds).and(w ->
                 w.lt(Phase::getSubmitBeg, event.getLiveBeg()).or().gt(Phase::getReviewEnd, event.getLiveEnd()));

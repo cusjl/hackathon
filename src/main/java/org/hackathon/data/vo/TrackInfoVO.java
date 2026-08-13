@@ -13,6 +13,8 @@ public class TrackInfoVO {
     private Integer trackId;
     private String name;
     private String descMd;
-    private Integer version;
     private List<PhaseBriefVO> phases;
+    private Integer version;
+    private Integer eventId;
+    private String eventName;
 }

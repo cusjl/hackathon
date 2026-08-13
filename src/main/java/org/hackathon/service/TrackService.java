@@ -2,6 +2,7 @@ package org.hackathon.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
+import org.hackathon.data.context.EventContext;
 import org.hackathon.data.dto.CreatePhaseDTO;
 import org.hackathon.data.dto.UpdateTrackDTO;
 import org.hackathon.data.enums.PhaseStatus;
@@ -33,21 +34,22 @@ public class TrackService {
     private final TrackMapper trackMapper;
     private final PhaseMapper phaseMapper;
 
-    public TrackInfoVO getTrack(Integer trackId) {
-        Track track = trackMapper.selectById(trackId);
+    public TrackInfoVO getTrack(EventContext context) {
+        Track track = context.getTrack();
         List<PhaseBriefVO> list = phaseMapper.selectList(
-                new LambdaQueryWrapper<Phase>().eq(Phase::getTrackId, trackId)
+                new LambdaQueryWrapper<Phase>().eq(Phase::getTrackId, track.getTrackId())
                         .select(Phase::getPhaseId, Phase::getName, Phase::getSubmitBeg, Phase::getSubmitEnd,
                                 Phase::getReviewBeg, Phase::getReviewEnd)
         ).stream().map(po -> new PhaseBriefVO(po.getPhaseId(), po.getName(), po.getStatus(),
                 po.getSubmitBeg(), po.getSubmitEnd(), po.getReviewBeg(), po.getReviewEnd())).toList();
         return new TrackInfoVO(
-                track.getTrackId(), track.getName(), track.getDescMd(), track.getVersion(), list
+                track.getTrackId(), track.getName(), track.getDescMd(), list, track.getVersion(),
+                track.getEventId(), context.getEvent().getName()
         );
     }
 
-    public void updateTrack(UpdateTrackDTO dto, Integer trackId) {
-        Track track = trackMapper.selectById(trackId);
+    public void updateTrack(UpdateTrackDTO dto, EventContext context) {
+        Track track = context.getTrack();
         if (!track.getVersion().equals(dto.getVersion())) {
             throw new BusinessException(ResultCode.RESOURCE_UPDATED);
         }
@@ -101,10 +103,10 @@ public class TrackService {
         }
     }
 
-    public PhaseIdVO createPhase(CreatePhaseDTO dto, Integer trackId) {
+    public PhaseIdVO createPhase(CreatePhaseDTO dto, EventContext context) {
         verifyPhaseTime(dto.getSubmitBeg(), dto.getSubmitEnd(), dto.getReviewBeg(), dto.getReviewEnd());
-        Track track = trackMapper.selectById(trackId);
-        Event event = eventMapper.selectById(track.getEventId());
+        Integer trackId = context.getTrack().getTrackId();
+        Event event = context.getEvent();
         if (event.getLiveEnd().isBefore(LocalDateTime.now())) {
             throw new BusinessException(ResultCode.EVENT_ALREADY_END);
         } else if (event.getLiveEnd().isBefore(dto.getReviewEnd()) ||
@@ -115,12 +117,12 @@ public class TrackService {
                 new LambdaQueryWrapper<Phase>().eq(Phase::getTrackId, trackId)
         );
         for (Phase phase : phases) {
+            if (phase.getName().equals(dto.getName())) {
+                throw new BusinessException(ResultCode.PHASE_ALREADY_EXIST);
+            }
             if (!(phase.getReviewEnd().isBefore(dto.getSubmitBeg()) ||
                     dto.getReviewEnd().isBefore(phase.getSubmitBeg()))) {
                 throw new BusinessException(ResultCode.PHASE_TIME_CONFLICT);
-            }
-            if (phase.getName().equals(dto.getName())) {
-                throw new BusinessException(ResultCode.PHASE_ALREADY_EXIST);
             }
         }
         Phase phase = new Phase(null, trackId, dto.getName(), dto.getSubmitBeg(), dto.getSubmitEnd(),
