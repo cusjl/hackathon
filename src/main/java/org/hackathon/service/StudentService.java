@@ -8,14 +8,12 @@ import org.hackathon.data.dto.UpdateContactDTO;
 import org.hackathon.data.enums.ResultCode;
 import org.hackathon.data.po.ExUser;
 import org.hackathon.data.po.Student;
-import org.hackathon.data.po.StudentTag;
 import org.hackathon.data.po.User;
 import org.hackathon.data.vo.CreateStudentVO;
 import org.hackathon.data.vo.StudentInfoVO;
 import org.hackathon.exception.BusinessException;
 import org.hackathon.mapper.ExUserMapper;
 import org.hackathon.mapper.StudentMapper;
-import org.hackathon.mapper.StudentTagMapper;
 import org.hackathon.mapper.UserMapper;
 import org.hackathon.security.jwt.LocalJwt;
 import org.hackathon.security.jwt.LocalJwtUtils;
@@ -33,21 +31,18 @@ public class StudentService {
     private final LocalJwtUtils localJwtUtils;
     private final UserMapper userMapper;
     private final StudentMapper studentMapper;
-    private final StudentTagMapper tagMapper;
+    private final StudentTagService tagService;
     private final UserService userService;
     private final AuthService authService;
     private final ExUserMapper exUserMapper;
 
-    public List<String> getAvailableTags() {
-        List<StudentTag> list = tagMapper.selectList(null);
-        return list.stream().map(StudentTag::getName).toList();
-    }
+
 
     private void verifyTags(List<String> tags) {
         if (tags == null) {
             tags = List.of();
         }
-        List<String> ava = getAvailableTags();
+        List<String> ava = tagService.getAvailableTags();
         for (String tag : tags) {
             if (!ava.contains(tag)) {
                 throw new BusinessException(ResultCode.TAG_UNAVAILABLE);
@@ -59,8 +54,8 @@ public class StudentService {
     public CreateStudentVO createStudent(CreateStudentDTO dto) {
         verifyTags(dto.getTags());
         LocalJwt jwt = localJwtUtils.parseToken(dto.getToken());
-        long count = userMapper.selectCount(
-                new LambdaQueryWrapper<User>().eq(User::getUsername, jwt.getCasId())
+        long count = studentMapper.selectCount(
+                new LambdaQueryWrapper<Student>().eq(Student::getCasId, jwt.getCasId())
         );
         if (count > 0) {
             throw new BusinessException(ResultCode.ALREADY_REGISTERED);
@@ -75,7 +70,7 @@ public class StudentService {
             if (exUser == null || !exUser.getOnCampus()) {
                 throw new BusinessException(ResultCode.NOT_ON_CAMPUS);
             }
-            user.setUsername(jwt.getCasId());
+            user.setName(jwt.getName());
             user.setStudentFlag(true);
             user.setUpdateTime(LocalDateTime.now());
             userMapper.updateById(user);
@@ -97,7 +92,7 @@ public class StudentService {
             userMapper.insert(user);
         }
         Student student = new Student(
-                user.getUserId(), jwt.getName(), dto.getCampus(), dto.getMajor(), "",
+                user.getUserId(), jwt.getCasId(), dto.getCampus(), dto.getMajor(), "",
                 String.join(",", dto.getTags()), LocalDateTime.now(), LocalDateTime.now()
         );
         studentMapper.insert(student);

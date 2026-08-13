@@ -5,13 +5,11 @@ import lombok.RequiredArgsConstructor;
 import org.hackathon.data.enums.AuthorityEnum;
 import org.hackathon.data.enums.ResultCode;
 import org.hackathon.data.po.Authority;
-import org.hackathon.data.po.Student;
 import org.hackathon.data.po.User;
 import org.hackathon.data.vo.AuthorityUserVO;
 import org.hackathon.exception.BusinessException;
 import org.hackathon.mapper.AuthorityMapper;
 import org.hackathon.mapper.EventMapper;
-import org.hackathon.mapper.StudentMapper;
 import org.hackathon.mapper.UserMapper;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -30,7 +28,6 @@ public class AuthorityService {
     private final AuthorityMapper authorityMapper;
     private final UserMapper userMapper;
     private final EventMapper eventMapper;
-    private final StudentMapper studentMapper;
 
     private void verifyUser(Integer userId) {
         if (userMapper.selectById(userId) == null) {
@@ -119,14 +116,8 @@ public class AuthorityService {
         if (authorities.isEmpty()) return List.of();
         List<Integer> ids = authorities.stream().map(Authority::getUserId).distinct().toList();
         List<User> users = userMapper.selectByIds(ids);
-        Map<Integer, Boolean> studentFlags = users.stream()
-                .collect(Collectors.toMap(User::getUserId, User::getStudentFlag));
-        Map<Integer, String> exUserNames = users.stream()
-                .collect(Collectors.toMap(User::getUserId, User::getUsername));
-        Map<Integer, String> studentNames = studentMapper.selectByIds(ids).stream()
-                .collect(Collectors.toMap(Student::getUserId, Student::getName));
+        Map<Integer, String> names = users.stream().collect(Collectors.toMap(User::getUserId, User::getName));
         return authorities.stream().map(a -> new AuthorityUserVO(a.getUserId(),
-                (studentFlags.get(a.getUserId()) ? studentNames.get(a.getUserId())
-                        : exUserNames.get(a.getUserId())), a.getType())).toList();
+                names.get(a.getUserId()), a.getType())).toList();
     }
 }

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.hackathon.data.po.Authority;
 import org.hackathon.data.po.Event;
+import org.hackathon.data.po.Student;
 import org.hackathon.data.vo.AuthorityEventVO;
 import org.hackathon.mapper.AuthorityMapper;
 import org.hackathon.mapper.EventMapper;
@@ -33,13 +34,13 @@ public class AuthService {
     private final EventMapper eventMapper;
 
     public Integer examineStudent(String casID) {
-        User user = userMapper.selectOne(
-                new LambdaQueryWrapper<User>().eq(User::getUsername, casID)
+        Student student = studentMapper.selectOne(
+                new LambdaQueryWrapper<Student>().eq(Student::getCasId, casID)
         );
-        if (user == null) {
+        if (student == null) {
             return null;
         }
-        return user.getUserId();
+        return student.getUserId();
     }
 
     public List<AuthorityEventVO> getAuthorityVOList(Integer userId) {
@@ -79,15 +80,25 @@ public class AuthService {
     }
 
     public LoginVO localLogin(LoginDTO dto) {
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        User user;
         if (dto.getTerm().matches("^\\d{12}$")) {
-            wrapper.eq(User::getUsername, dto.getTerm());
-        } else if (dto.getTerm().matches("^1[3-9]\\d{9}$")) {
-            wrapper.eq(User::getPhone, dto.getTerm());
+            Student student = studentMapper.selectOne(
+                    new LambdaQueryWrapper<Student>().eq(Student::getCasId, dto.getTerm())
+                            .select(Student::getUserId)
+            );
+            if (student == null) {
+                throw new BusinessException(ResultCode.NOT_REGISTERED);
+            }
+            user = userMapper.selectById(student.getUserId());
         } else {
-            wrapper.eq(User::getEmail, dto.getTerm());
+            LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+            if (dto.getTerm().matches("^1[3-9]\\d{9}$")) {
+                wrapper.eq(User::getPhone, dto.getTerm());
+            } else {
+                wrapper.eq(User::getEmail, dto.getTerm());
+            }
+            user = userMapper.selectOne(wrapper);
         }
-        User user = userMapper.selectOne(wrapper);
         if (user == null) {
             throw new BusinessException(ResultCode.USER_NOT_EXIST);
         }
@@ -100,13 +111,8 @@ public class AuthService {
         LocalJwt jwt = new LocalJwt();
         jwt.setUserId(user.getUserId());
         jwt.setStudentFlag(user.getStudentFlag());
-        if (user.getStudentFlag()) {
-            jwt.setName(studentMapper.selectById(user.getUserId()).getName());
-            jwt.setCasId(user.getUsername());
-        } else {
-            jwt.setName(user.getUsername());
-            jwt.setCasId("");
-        }
+        jwt.setName(user.getName());
+        jwt.setCasId(user.getStudentFlag() ? dto.getTerm() : null);
         String token = localJwtUtils.generateToken(jwt, false);
         return new LoginVO(
                 token, jwt.getName(), jwt.getStudentFlag(), jwt.getCasId(), getAuthorityVOList(jwt.getUserId())

@@ -64,6 +64,7 @@ public class UserService {
         vo.setStudentFlag(user.getStudentFlag());
         vo.setPhone(user.getPhone());
         vo.setEmail(user.getEmail());
+        vo.setName(user.getName());
         if (user.getStudentFlag()) {
             Student student = studentMapper.selectById(userId);
             if (student == null) throw new BusinessException(ResultCode.STUDENT_NOT_EXIST);
@@ -71,7 +72,6 @@ public class UserService {
                     student.getCampus(), student.getMajor(), student.getIntroduction(),
                     student.getTagsAsList()
             );
-            vo.setName(student.getName());
             vo.setStudent(brief);
         } else {
             ExUser exUser = exUserMapper.selectById(userId);
@@ -79,7 +79,6 @@ public class UserService {
             ExUserBriefVO brief = new ExUserBriefVO(
                     exUser.getOnCampus(), exUser.getOrganization()
             );
-            vo.setName(user.getUsername());
             vo.setExUser(brief);
         }
         return vo;
@@ -134,7 +133,6 @@ public class UserService {
                 false, dto.getPhone(), dto.getEmail(), LocalDateTime.now(), LocalDateTime.now()
         );
         userMapper.insert(user);
-        System.out.println("iunnim");
         exUserMapper.insert(new ExUser(user.getUserId(), dto.getOnCampus(), dto.getOrganization(),
                 LocalDateTime.now(), LocalDateTime.now()));
         return new UserIdVO(user.getUserId());

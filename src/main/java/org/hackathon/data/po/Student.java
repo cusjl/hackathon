@@ -16,7 +16,7 @@ import java.util.List;
 public class Student {
     @TableId(type = IdType.INPUT)
     private Integer userId;
-    private String name;
+    private String casId;
     private String campus;
     private String major;
     private String introduction;

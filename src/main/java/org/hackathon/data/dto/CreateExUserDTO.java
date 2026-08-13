@@ -6,7 +6,7 @@ import lombok.Data;
 @Data
 public class CreateExUserDTO {
     @NotBlank(message = "姓名不能为空")
-    @Size(max = 11, message = "姓名不能超过11字")
+    @Size(max = 50, message = "姓名不能超过50字")
     private String name;
     @NotNull(message = "账号种类不能为空")
     private Boolean onCampus;

@@ -23,9 +23,9 @@ public class UpdateStudentDTO {
     )
     private String campus;
     @NotBlank(message = "专业不能为空")
-    @Size(max = 50, message = "专业名称过长")
+    @Size(max = 50, message = "专业名称不能超过50字")
     private String major;
-    @Size(max = 100, message = "简介过长")
+    @Size(max = 100, message = "简介不能超过100字")
     private String introduction;
     private List<String> tags;
 }

@@ -27,7 +27,7 @@ public class CreateStudentDTO {
     )
     private String campus;
     @NotBlank(message = "专业不能为空")
-    @Size(max = 50, message = "专业名称过长")
+    @Size(max = 50, message = "专业名称不能超过50字")
     private String major;
     private List<String> tags;
 }

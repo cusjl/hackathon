@@ -9,6 +9,7 @@ import org.hackathon.data.dto.UpdateStudentDTO;
 import org.hackathon.data.vo.*;
 import org.hackathon.security.jwt.LocalJwt;
 import org.hackathon.service.StudentService;
+import org.hackathon.service.StudentTagService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class StudentController {
 
     private final StudentService studentService;
+    private final StudentTagService tagService;
 
     /**
      * 学生注册
@@ -35,7 +37,7 @@ public class StudentController {
      */
     @GetMapping("/tags")
     public ResponseEntity<Result<StudentTagsVO>> getAvailableTags() {
-        return Result.success(new StudentTagsVO(studentService.getAvailableTags()), "获取成功");
+        return Result.success(new StudentTagsVO(tagService.getAvailableTags()), "获取成功");
     }
 
     /**

@@ -6,7 +6,6 @@ spring:
     username: root
     password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
-
 jwt:
   local:
     secret-key: ${HACKATHON_SECRET_KEY}

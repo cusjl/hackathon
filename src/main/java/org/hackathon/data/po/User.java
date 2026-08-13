@@ -14,8 +14,7 @@ import java.time.LocalDateTime;
 public class User {
     @TableId(type = IdType.AUTO)
     private Integer userId;
-    //学生用户：学号，非学生用户：姓名
-    private String username;
+    private String name;
     private String password;
     private Boolean studentFlag;
     private String phone;
