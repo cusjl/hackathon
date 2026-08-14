@@ -62,4 +62,16 @@ public class PhaseController {
         phaseService.updatePhaseConfig(dto, context);
         return Result.ok();
     }
+
+    /**
+     * 删除轮次
+     * @param phaseId 轮次id
+     * @return ok
+     */
+    @DeleteMapping("/{phaseId}")
+    @EventAuth(mode = "ADMIN", var = "PHASE")
+    public ResponseEntity<Result<Void>> deletePhase(@PathVariable Integer phaseId) {
+        phaseService.deletePhase(phaseId);
+        return Result.ok();
+    }
 }

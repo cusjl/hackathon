@@ -40,13 +40,16 @@ public enum ResultCode {
     INVALID_EVENT_TIME(3002, HttpStatus.CONFLICT, "赛事时间非法"),
     EVENT_ALREADY_REG(3003, HttpStatus.FORBIDDEN, "赛事已开始报名"),
     EVENT_ALREADY_END(3004, HttpStatus.FORBIDDEN, "赛事已经结束"),
+    EVENT_ALREADY_EXIST(3005, HttpStatus.CONFLICT, "赛事已存在"),
     TRACK_NOT_FOUND(3011, HttpStatus.NOT_FOUND, "赛道不存在"),
     TRACK_ALREADY_EXIST(3012, HttpStatus.CONFLICT, "赛道已存在"),
+    BINDING_TRACK(3013, HttpStatus.CONFLICT, "存在关联赛道"),
     PHASE_NOT_FOUND(3021, HttpStatus.NOT_FOUND, "轮次不存在"),
     PHASE_EVENT_TIME_CONFLICT(3022, HttpStatus.CONFLICT, "轮次时间与赛事冲突"),
     INVALID_PHASE_TIME(3023, HttpStatus.CONFLICT, "轮次时间非法"),
     PHASE_TIME_CONFLICT(3024, HttpStatus.CONFLICT, "与其他轮次时间冲突"),
     PHASE_ALREADY_EXIST(3025, HttpStatus.CONFLICT, "轮次已存在"),
+    BINDING_PHASE(3026, HttpStatus.CONFLICT, "存在关联轮次"),
 
     //通用
     //PARAM_ERROR的msg通过Validation抛出具体错误，详见各参数message

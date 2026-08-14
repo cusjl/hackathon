@@ -1,17 +1,13 @@
 package org.hackathon.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.hackathon.annotation.Auth;
 import org.hackathon.annotation.EventAuth;
-import org.hackathon.data.dto.CreateExUserDTO;
-import org.hackathon.data.dto.UpdateExUserDTO;
-import org.hackathon.data.dto.UpdatePasswordDTO;
-import org.hackathon.data.vo.UserIdVO;
-import org.hackathon.data.vo.UserInfoVO;
-import org.hackathon.data.vo.Result;
-import org.hackathon.data.vo.ExUserInfoVO;
+import org.hackathon.data.dto.*;
+import org.hackathon.data.vo.*;
 import org.hackathon.security.jwt.LocalJwt;
 import org.hackathon.service.UserService;
 import org.springframework.http.ResponseEntity;
@@ -98,5 +94,18 @@ public class UserController {
     public ResponseEntity<Result<UserIdVO>> createExUser(
             @PathVariable Integer eventId, @RequestBody @Valid CreateExUserDTO dto) {
         return Result.success(userService.createExJudge(dto, eventId), "创建成功");
+    }
+
+    /**
+     * 查询分页用户
+     * @param param 分页参数
+     * @param dto 查询参数
+     * @return 分页列表
+     */
+    @PostMapping("/list")
+    @Auth(onlySuper = true)
+    public ResponseEntity<Result<IPage<UserBriefVO>>> getUserPage(@Valid PageParamDTO param,
+            @RequestBody @Valid QueryUserDTO dto) {
+        return Result.success(userService.getUserPage(dto, param), "获取成功");
     }
 }

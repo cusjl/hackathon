@@ -21,6 +21,7 @@ import org.hackathon.mapper.PhaseMapper;
 import org.hackathon.mapper.TrackMapper;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -132,5 +133,14 @@ public class TrackService {
         );
         phaseMapper.insert(phase);
         return new PhaseIdVO(phase.getPhaseId());
+    }
+
+    @Transactional
+    public void deleteTrack(Integer trackId) {
+        LambdaQueryWrapper<Phase> wrapper = new LambdaQueryWrapper<Phase>().eq(Phase::getTrackId, trackId);
+        if (phaseMapper.selectCount(wrapper) > 0) {
+            throw new BusinessException(ResultCode.BINDING_PHASE);
+        }
+        trackMapper.deleteById(trackId);
     }
 }

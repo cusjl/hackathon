@@ -4,6 +4,7 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.hackathon.data.enums.ResultCode;
 import org.hackathon.data.vo.Result;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -60,7 +61,7 @@ public class GlobalExceptionHandler {
     // ==================== 5. 路径请求错误 ====================
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<Result<Void>> handlePathVariable(NoResourceFoundException e) {
-        String message = "请求路径无资源: /" + e.getResourcePath();
+        String message = "请求路径无资源: " + e.getHttpMethod() + " /" + e.getResourcePath();
         log.warn(message);
         return Result.error(ResultCode.PATH_NOT_FOUND, message);
     }
@@ -95,10 +96,22 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DuplicateKeyException.class)
     public ResponseEntity<Result<Void>> handleDuplicateKey(DuplicateKeyException e) {
         log.warn("数据插入/更新失败，违反唯一约束，详细信息：{}", e.getMessage());
-        return Result.error(ResultCode.RESOURCE_CONFLICT);
+        return Result.error(ResultCode.RESOURCE_CONFLICT, "数据库中存在重复数据");
     }
 
-    // =================== 10. 所有未捕获的异常（兜底） ====================
+    // =============== 10. 数据非法 & 外键 ==================
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Result<Void>> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+        Throwable rootCause = e.getRootCause();
+        String message = rootCause != null ? rootCause.getMessage() : e.getMessage();
+        log.warn("数据完整性违例: {}", message, e);
+        if (message != null && message.contains("foreign key constraint")) {
+            return Result.error(ResultCode.RESOURCE_CONFLICT, "外键冲突，无法创建/删除资源");
+        }
+        return Result.error(ResultCode.PARAM_ERROR, "数据库修改失败");
+    }
+
+    // =================== 11. 所有未捕获的异常（兜底） ====================
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Result<Void>> handleException(Exception e) {
         log.error("系统异常: ", e);

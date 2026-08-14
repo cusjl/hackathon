@@ -90,4 +90,8 @@ public class PhaseService {
         }
     }
 
+    public void deletePhase(Integer phaseId) {
+        phaseMapper.deleteById(phaseId);
+    }
+
 }

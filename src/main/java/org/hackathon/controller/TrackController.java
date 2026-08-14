@@ -74,4 +74,16 @@ public class TrackController {
         EventContext context = (EventContext) request.getAttribute("context");
         return Result.success(trackService.createPhase(dto, context), "创建成功");
     }
+
+    /**
+     * 删除赛道
+     * @param trackId 赛道id
+     * @return ok
+     */
+    @DeleteMapping("/{trackId}")
+    @EventAuth(mode = "ADMIN", var = "TRACK")
+    public ResponseEntity<Result<Void>> deleteTrack(@PathVariable Integer trackId) {
+        trackService.deleteTrack(trackId);
+        return Result.ok();
+    }
 }

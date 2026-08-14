@@ -5,7 +5,9 @@ import lombok.RequiredArgsConstructor;
 import org.hackathon.data.enums.AuthorityEnum;
 import org.hackathon.data.enums.ResultCode;
 import org.hackathon.data.po.Authority;
+import org.hackathon.data.po.Event;
 import org.hackathon.data.po.User;
+import org.hackathon.data.vo.AuthorityEventVO;
 import org.hackathon.data.vo.AuthorityUserVO;
 import org.hackathon.exception.BusinessException;
 import org.hackathon.mapper.AuthorityMapper;
@@ -16,9 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -119,5 +119,39 @@ public class AuthorityService {
         Map<Integer, String> names = users.stream().collect(Collectors.toMap(User::getUserId, User::getName));
         return authorities.stream().map(a -> new AuthorityUserVO(a.getUserId(),
                 names.get(a.getUserId()), a.getType())).toList();
+    }
+
+    public List<AuthorityEventVO> getAuthorityListByUser(Integer userId) {
+        List<Authority> list = authorityMapper.selectList(
+                new LambdaQueryWrapper<Authority>().eq(Authority::getUserId, userId)
+        );
+        list.sort(
+                Comparator.comparingInt(Authority::getTypeValue)
+                        .thenComparing(Comparator.comparing(Authority::getCreateTime).reversed())
+        );
+        List<Integer> ids = list.stream().map(Authority::getEventId)
+                .filter(Objects::nonNull).distinct().toList();
+        Map<Integer, Event> map = ids.isEmpty() ? new HashMap<>()
+                : eventMapper.selectByIds(ids).stream()
+                  .collect(Collectors.toMap(Event::getEventId, event -> event));
+        return list.stream().map(po -> {
+            AuthorityEventVO vo = new AuthorityEventVO();
+            vo.setType(po.getType());
+            Event event = map.get(po.getEventId());
+            if (event != null) {
+                vo.setEventId(po.getEventId());
+                vo.setEventName(event.getName());
+                vo.setEventStatus(event.getStatus());
+            }
+            return vo;
+        }).toList();
+    }
+
+    //加判null封装
+    public List<AuthorityEventVO> getAuthorityListByUserWithCheck(Integer userId) {
+        if (userId == null || userMapper.selectById(userId) == null) {
+            throw new BusinessException(ResultCode.USER_NOT_EXIST);
+        }
+        return getAuthorityListByUser(userId);
     }
 }

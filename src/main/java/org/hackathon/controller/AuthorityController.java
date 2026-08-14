@@ -6,8 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.hackathon.annotation.Auth;
 import org.hackathon.annotation.EventAuth;
 import org.hackathon.data.dto.UserIdDTO;
-import org.hackathon.data.vo.AuthorityUserVO;
-import org.hackathon.data.vo.Result;
+import org.hackathon.data.vo.*;
 import org.hackathon.security.jwt.LocalJwt;
 import org.hackathon.service.AuthorityService;
 import org.springframework.http.ResponseEntity;
@@ -135,10 +134,22 @@ public class AuthorityController {
      * @param eventId 赛事id
      * @return 简表
      */
-    @GetMapping("/{eventId}")
+    @GetMapping("/event/{eventId}")
     @EventAuth(mode = "GUEST", var = "EVENT")
     public ResponseEntity<Result<List<AuthorityUserVO>>> getAuthorityListByEvent(
             @PathVariable Integer eventId) {
         return Result.success(authorityService.getAuthorityListByEvent(eventId), "获取成功");
+    }
+
+    /**
+     * 查询用户所有权限
+     * @param userId 用户id
+     * @return 列表
+     */
+    @GetMapping("/user/{userId}")
+    @Auth(onlySuper = true)
+    public ResponseEntity<Result<List<AuthorityEventVO>>> getAuthorityListByUser(
+            @PathVariable Integer userId) {
+        return Result.success(authorityService.getAuthorityListByUserWithCheck(userId), "获取成功");
     }
 }

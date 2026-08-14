@@ -1,11 +1,10 @@
 package org.hackathon.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
-import org.hackathon.data.dto.CreateExUserDTO;
-import org.hackathon.data.dto.UpdateExUserDTO;
-import org.hackathon.data.dto.UpdatePasswordDTO;
-import org.hackathon.data.dto.UpdateContactDTO;
+import org.hackathon.data.dto.*;
 import org.hackathon.data.enums.AuthorityEnum;
 import org.hackathon.data.enums.ResultCode;
 import org.hackathon.data.po.Authority;
@@ -21,6 +20,7 @@ import org.hackathon.mapper.UserMapper;
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 
@@ -154,5 +154,25 @@ public class UserService {
                 eventId, LocalDateTime.now());
         authorityMapper.insert(authority);
         return vo;
+    }
+
+    public IPage<UserBriefVO> getUserPage(QueryUserDTO dto, PageParamDTO param) {
+        if (dto.getOnlySuper() && dto.getOnlyExtern()) return new Page<>(param.getPage(), param.getSize());
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()
+                .eq(dto.getUserId() != null, User::getUserId, dto.getUserId())
+                .like(StringUtils.hasText(dto.getName()), User::getName, dto.getName())
+                .likeRight(StringUtils.hasText(dto.getPhone()), User::getPhone, dto.getPhone())
+                .likeRight(StringUtils.hasText(dto.getEmail()), User::getEmail, dto.getEmail())
+                .eq(dto.getOnlyStudent(), User::getStudentFlag, true)
+                .eq(dto.getOnlyExtern(), User::getStudentFlag, false)
+                .select(User::getUserId, User::getName, User::getStudentFlag, User::getPhone, User::getEmail)
+                .orderByAsc(User::getUserId)
+                .exists(dto.getOnlySuper(), "SELECT 1 FROM authority a WHERE a.type = {0} and " +
+                            "a.user_id = user.user_id", AuthorityEnum.SUPER)
+                .exists(StringUtils.hasText(dto.getCasId()), "SELECT 1 FROM student s WHERE " +
+                        "s.cas_id LIKE CONCAT({0},'%') and s.user_id = user.user_id", dto.getCasId());
+        return userMapper.selectPage(new Page<>(param.getPage(), param.getSize()), wrapper)
+                .convert(po -> new UserBriefVO(po.getUserId(), po.getName(),
+                po.getStudentFlag(), po.getPhone(), po.getEmail()));
     }
 }

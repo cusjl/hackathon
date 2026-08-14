@@ -1,18 +1,14 @@
 package org.hackathon.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.hackathon.annotation.Auth;
 import org.hackathon.annotation.EventAuth;
 import org.hackathon.data.context.EventContext;
-import org.hackathon.data.dto.CreateEventDTO;
-import org.hackathon.data.dto.CreateTrackDTO;
-import org.hackathon.data.dto.UpdateEventDTO;
-import org.hackathon.data.vo.EventIdVO;
-import org.hackathon.data.vo.TrackIdVO;
-import org.hackathon.data.vo.EventInfoVO;
-import org.hackathon.data.vo.Result;
+import org.hackathon.data.dto.*;
+import org.hackathon.data.vo.*;
 import org.hackathon.service.EventService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -75,5 +71,31 @@ public class EventController {
         EventContext context = (EventContext) request.getAttribute("context");
         eventService.updateEvent(dto, context);
         return Result.ok();
+    }
+
+    /**
+     * 删除赛事
+     * @param eventId 赛事id
+     * @return ok
+     */
+    @DeleteMapping("/{eventId}")
+    @Auth(onlySuper = true)
+    @EventAuth(mode = "GUEST", var = "EVENT")
+    public ResponseEntity<Result<Void>> deleteEvent(@PathVariable Integer eventId) {
+        eventService.deleteEvent(eventId);
+        return Result.ok();
+    }
+
+    /**
+     * 查询分页赛事
+     * @param param 查询参数
+     * @param dto 查询条件
+     * @return 分页简介
+     */
+    @PostMapping("/list")
+    @Auth
+    public ResponseEntity<Result<IPage<EventBriefVO>>> getEventPage(@Valid PageParamDTO param,
+            @RequestBody @Valid QueryEventDTO dto){
+        return Result.success(eventService.getEventPage(dto, param), "获取成功");
     }
 }

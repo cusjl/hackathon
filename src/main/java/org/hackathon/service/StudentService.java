@@ -33,7 +33,7 @@ public class StudentService {
     private final StudentMapper studentMapper;
     private final StudentTagService tagService;
     private final UserService userService;
-    private final AuthService authService;
+    private final AuthorityService authorityService;
     private final ExUserMapper exUserMapper;
 
 
@@ -100,7 +100,7 @@ public class StudentService {
         return new CreateStudentVO(
                 localJwtUtils.generateToken(jwt, false), jwt.getName(),
                 true, jwt.getCasId(), existed,
-                existed ? authService.getAuthorityVOList(user.getUserId()) : List.of()
+                existed ? authorityService.getAuthorityListByUser(user.getUserId()) : List.of()
         );
     }
 

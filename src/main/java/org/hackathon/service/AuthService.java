@@ -2,12 +2,7 @@ package org.hackathon.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
-import org.hackathon.data.po.Authority;
-import org.hackathon.data.po.Event;
 import org.hackathon.data.po.Student;
-import org.hackathon.data.vo.AuthorityEventVO;
-import org.hackathon.mapper.AuthorityMapper;
-import org.hackathon.mapper.EventMapper;
 import org.hackathon.security.jwt.LocalJwt;
 import org.hackathon.data.dto.LoginDTO;
 import org.hackathon.data.enums.ResultCode;
@@ -21,7 +16,6 @@ import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,8 +24,7 @@ public class AuthService {
     private final UserMapper userMapper;
     private final LocalJwtUtils localJwtUtils;
     private final StudentMapper studentMapper;
-    private final AuthorityMapper authorityMapper;
-    private final EventMapper eventMapper;
+    private final AuthorityService authorityService;
 
     public Integer examineStudent(String casID) {
         Student student = studentMapper.selectOne(
@@ -43,31 +36,6 @@ public class AuthService {
         return student.getUserId();
     }
 
-    public List<AuthorityEventVO> getAuthorityVOList(Integer userId) {
-        List<Authority> list = authorityMapper.selectList(
-                new LambdaQueryWrapper<Authority>().eq(Authority::getUserId, userId)
-        );
-        list.sort(
-                Comparator.comparingInt(Authority::getTypeValue)
-                .thenComparing(Comparator.comparing(Authority::getCreateTime).reversed())
-        );
-        List<Integer> ids = list.stream().map(Authority::getEventId)
-                .filter(Objects::nonNull).distinct().toList();
-        Map<Integer, String> map = ids.isEmpty() ? new HashMap<>()
-                : eventMapper.selectByIds(ids).stream()
-                  .collect(Collectors.toMap(Event::getEventId, Event::getName));
-        return list.stream().map(po -> {
-            AuthorityEventVO vo = new AuthorityEventVO();
-            vo.setType(po.getType());
-            vo.setEventId(po.getEventId());
-            if (po.getEventId() != null) {
-                vo.setEventId(po.getEventId());
-                vo.setEventName(map.get(po.getEventId()));
-            }
-            return vo;
-        }).toList();
-    }
-
     public LoginVO exchangeToken(String temp) {
         LocalJwt jwt = localJwtUtils.parseToken(temp);
         if (jwt.getUserId() == -1) {
@@ -75,7 +43,7 @@ public class AuthService {
         }
         return new LoginVO(
                 localJwtUtils.generateToken(jwt, false), jwt.getName(), true,
-                        jwt.getCasId(), getAuthorityVOList(jwt.getUserId())
+                        jwt.getCasId(), authorityService.getAuthorityListByUser(jwt.getUserId())
         );
     }
 
@@ -115,7 +83,8 @@ public class AuthService {
         jwt.setCasId(user.getStudentFlag() ? dto.getTerm() : null);
         String token = localJwtUtils.generateToken(jwt, false);
         return new LoginVO(
-                token, jwt.getName(), jwt.getStudentFlag(), jwt.getCasId(), getAuthorityVOList(jwt.getUserId())
+                token, jwt.getName(), jwt.getStudentFlag(), jwt.getCasId(),
+                authorityService.getAuthorityListByUser(jwt.getUserId())
         );
     }
 }
