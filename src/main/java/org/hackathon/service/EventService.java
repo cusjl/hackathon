@@ -123,7 +123,11 @@ public class EventService {
         }
     }
 
-    public void deleteEvent(Integer eventId) {
+    public void deleteEvent(EventContext context) {
+        if (!(context.getEvent().getStatus() == EventStatus.PREP)) {
+            throw new BusinessException(ResultCode.EVENT_ALREADY_REG);
+        }
+            Integer eventId = context.getEvent().getEventId();
         long count = trackMapper.selectCount(new LambdaQueryWrapper<Track>().eq(Track::getEventId, eventId));
         if (count > 0) {
             throw new BusinessException(ResultCode.BINDING_TRACK);

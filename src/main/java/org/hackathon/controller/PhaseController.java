@@ -70,8 +70,10 @@ public class PhaseController {
      */
     @DeleteMapping("/{phaseId}")
     @EventAuth(mode = "ADMIN", var = "PHASE")
-    public ResponseEntity<Result<Void>> deletePhase(@PathVariable Integer phaseId) {
-        phaseService.deletePhase(phaseId);
+    public ResponseEntity<Result<Void>> deletePhase(@PathVariable Integer phaseId,
+            HttpServletRequest request) {
+        EventContext context = (EventContext) request.getAttribute("context");
+        phaseService.deletePhase(context);
         return Result.ok();
     }
 }

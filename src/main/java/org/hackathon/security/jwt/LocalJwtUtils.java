@@ -73,7 +73,7 @@ public class LocalJwtUtils {
         }
         LocalJwt jwt = parseToken(token);
         if (jwt.getUserId() == -1) {
-            throw new BusinessException(ResultCode.NOT_REGISTERED);
+            throw new BusinessException(ResultCode.NOT_ENROLLED);
         }
         return jwt;
     }

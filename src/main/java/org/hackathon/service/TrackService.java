@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.hackathon.data.context.EventContext;
 import org.hackathon.data.dto.CreatePhaseDTO;
 import org.hackathon.data.dto.UpdateTrackDTO;
+import org.hackathon.data.enums.EventStatus;
 import org.hackathon.data.enums.PhaseStatus;
 import org.hackathon.data.enums.ResultCode;
 import org.hackathon.data.po.Event;
@@ -136,7 +137,11 @@ public class TrackService {
     }
 
     @Transactional
-    public void deleteTrack(Integer trackId) {
+    public void deleteTrack(EventContext context) {
+        if (!(context.getEvent().getStatus() == EventStatus.PREP)) {
+            throw new BusinessException(ResultCode.EVENT_ALREADY_REG);
+        }
+        Integer trackId = context.getTrack().getTrackId();
         LambdaQueryWrapper<Phase> wrapper = new LambdaQueryWrapper<Phase>().eq(Phase::getTrackId, trackId);
         if (phaseMapper.selectCount(wrapper) > 0) {
             throw new BusinessException(ResultCode.BINDING_PHASE);

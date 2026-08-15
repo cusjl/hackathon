@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.hackathon.data.context.EventContext;
 import org.hackathon.data.dto.UpdatePhaseConfigDTO;
 import org.hackathon.data.dto.UpdatePhaseDTO;
+import org.hackathon.data.enums.PhaseStatus;
 import org.hackathon.data.enums.ResultCode;
 import org.hackathon.data.po.Event;
 import org.hackathon.data.po.Phase;
@@ -90,8 +91,12 @@ public class PhaseService {
         }
     }
 
-    public void deletePhase(Integer phaseId) {
-        phaseMapper.deleteById(phaseId);
+    public void deletePhase(EventContext context) {
+        Phase phase = context.getPhase();
+        if (!(phase.getStatus() == PhaseStatus.PREP)) {
+            throw new BusinessException(ResultCode.PHASE_ALREADY_SUBMIT);
+        }
+        phaseMapper.deleteById(phase.getPhaseId());
     }
 
 }

@@ -81,8 +81,10 @@ public class EventController {
     @DeleteMapping("/{eventId}")
     @Auth(onlySuper = true)
     @EventAuth(mode = "GUEST", var = "EVENT")
-    public ResponseEntity<Result<Void>> deleteEvent(@PathVariable Integer eventId) {
-        eventService.deleteEvent(eventId);
+    public ResponseEntity<Result<Void>> deleteEvent(@PathVariable Integer eventId,
+            HttpServletRequest request) {
+        EventContext context = (EventContext) request.getAttribute("context");
+        eventService.deleteEvent(context);
         return Result.ok();
     }
 

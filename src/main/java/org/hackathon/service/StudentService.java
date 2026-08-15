@@ -58,7 +58,7 @@ public class StudentService {
                 new LambdaQueryWrapper<Student>().eq(Student::getCasId, jwt.getCasId())
         );
         if (count > 0) {
-            throw new BusinessException(ResultCode.ALREADY_REGISTERED);
+            throw new BusinessException(ResultCode.ALREADY_ENROLLED);
         }
         User up= userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getPhone, dto.getPhone()));
         User ue = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getEmail, dto.getEmail()));
@@ -84,7 +84,7 @@ public class StudentService {
                 throw new BusinessException(ResultCode.EMAIL_CONFLICT);
             }
             user = new User(
-                    null, jwt.getCasId(),
+                    null, jwt.getName(),
                     dto.getPassword() == null ? null : BCrypt.hashpw(dto.getPassword(), BCrypt.gensalt(10)),
                     true, dto.getPhone(), dto.getEmail(),
                     LocalDateTime.now(), LocalDateTime.now()

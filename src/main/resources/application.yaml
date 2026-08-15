@@ -16,3 +16,5 @@ jwt:
     salt: KOISHIKISHIKAWAIIKAWAIIKISSKISSLOVELY
     iteration-cound: 114514
     key-length: 256
+hackathon:
+  team-capacity: 5

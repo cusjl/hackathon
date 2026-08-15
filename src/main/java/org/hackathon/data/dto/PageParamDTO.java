@@ -13,5 +13,5 @@ public class PageParamDTO {
     @Positive(message = "单页条数必须为正数")
     @Max(value = 100, message = "单页条数不能超过100条")
     @NotNull(message = "单页条数不能为null")
-    private Integer size = 20;
+    private Integer size = 10;
 }

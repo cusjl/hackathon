@@ -39,7 +39,7 @@ public class AuthService {
     public LoginVO exchangeToken(String temp) {
         LocalJwt jwt = localJwtUtils.parseToken(temp);
         if (jwt.getUserId() == -1) {
-            throw new BusinessException(ResultCode.NOT_REGISTERED);
+            throw new BusinessException(ResultCode.NOT_ENROLLED);
         }
         return new LoginVO(
                 localJwtUtils.generateToken(jwt, false), jwt.getName(), true,
@@ -55,7 +55,7 @@ public class AuthService {
                             .select(Student::getUserId)
             );
             if (student == null) {
-                throw new BusinessException(ResultCode.NOT_REGISTERED);
+                throw new BusinessException(ResultCode.NOT_ENROLLED);
             }
             user = userMapper.selectById(student.getUserId());
         } else {

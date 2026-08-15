@@ -82,8 +82,10 @@ public class TrackController {
      */
     @DeleteMapping("/{trackId}")
     @EventAuth(mode = "ADMIN", var = "TRACK")
-    public ResponseEntity<Result<Void>> deleteTrack(@PathVariable Integer trackId) {
-        trackService.deleteTrack(trackId);
+    public ResponseEntity<Result<Void>> deleteTrack(@PathVariable Integer trackId,
+            HttpServletRequest request) {
+        EventContext context = (EventContext) request.getAttribute("context");
+        trackService.deleteTrack(context);
         return Result.ok();
     }
 }
