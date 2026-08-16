@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hackathon.config.GlobalProperties;
 import org.hackathon.data.dto.SduPassTestDTO;
 import org.hackathon.security.jwt.LocalJwt;
 import org.hackathon.data.dto.LoginDTO;
@@ -31,6 +32,7 @@ public class AuthController {
     private final SduPassJwtUtils sduPassJwtUtils;
     private final AuthService authService;
     private final LocalJwtUtils localJwtUtils;
+    private final GlobalProperties globalProperties;
 
     /**
      * 生成临时token（仅测试）
@@ -57,17 +59,17 @@ public class AuthController {
                 sduPassJwtUtils.parseSduPassJwt(sduPassJwt);
         //在已注册用户中查找对应学生
         Integer id = authService.examineStudent(payload.casID());
-        String url = "[前端url占位]";
+        String url = globalProperties.frontendUrl();
         if (id == null) {
             String token = localJwtUtils.generateToken(
                     new LocalJwt(-1, payload.name(), true, payload.casID()), true
             );
-            url += "/register?token=" + token;
+            url += globalProperties.registerPath() + "?token=" + token;
         } else {
             String token = localJwtUtils.generateToken(
                     new LocalJwt(id, payload.name(), true, payload.casID()), true
             );
-            url += "/dashboard?token=" + token;
+            url += globalProperties.redirectPath() + "?token=" + token;
         }
 
         return ResponseEntity

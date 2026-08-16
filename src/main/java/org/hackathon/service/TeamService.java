@@ -87,8 +87,13 @@ public class TeamService {
         )).toList();
     }
 
-    public TeamInfoVO getTeam(Team team) {
+    public TeamInfoVO getTeam(Team team, Integer userId) {
         TeamInfoVO vo = new TeamInfoVO();
+        if (regMapper.selectCount(
+                new LambdaQueryWrapper<Registration>().eq(Registration::getTeamId, team.getTeamId())
+                        .eq(Registration::getUserId, userId)) == 0) {
+            throw new BusinessException(ResultCode.NOT_TEAM_MEMBER);
+        }
         BeanUtils.copyProperties(team, vo);
         vo.setEventName(eventMapper.selectById(team.getEventId()).getName());
         vo.setTrackName(trackMapper.selectById(team.getTrackId()).getName());

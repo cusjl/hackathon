@@ -47,8 +47,11 @@ public class UserService {
     public ExUserInfoVO getExUser(Integer userId) {
         User user = userMapper.selectById(userId);
         ExUser exUser = exUserMapper.selectById(userId);
-        if (user == null || exUser == null) {
+        if (user == null) {
             throw new BusinessException(ResultCode.USER_NOT_EXIST);
+        }
+        if (exUser == null) {
+            throw new BusinessException(ResultCode.EX_USER_NOT_EXIST);
         }
         return new ExUserInfoVO(user.getPhone(), user.getEmail(),
                 exUser.getOnCampus(), exUser.getOrganization());

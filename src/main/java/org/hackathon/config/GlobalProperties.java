@@ -4,6 +4,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties("hackathon")
 public record GlobalProperties(
-        Integer teamCapacity
+        Integer teamCapacity,
+        String frontendUrl,
+        String registerPath,
+        String redirectPath
 ) {
 }

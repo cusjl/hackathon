@@ -53,7 +53,8 @@ public class TeamController {
     public ResponseEntity<Result<TeamInfoVO>> getTeam(@PathVariable Integer teamId,
             HttpServletRequest request) {
         Team team = (Team) request.getAttribute("team");
-        return Result.success(teamService.getTeam(team), "获取成功");
+        LocalJwt jwt = (LocalJwt) request.getAttribute("jwt");
+        return Result.success(teamService.getTeam(team, jwt.getUserId()), "获取成功");
     }
 
     /**

@@ -21,4 +21,7 @@ jwt:
     iteration-cound: 114514
     key-length: 256
 hackathon:
+  frontend-url:
+  register-path:
+  redirect-path:
   team-capacity: 5
