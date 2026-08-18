@@ -2,7 +2,7 @@ package org.hackathon.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
-import org.hackathon.data.context.EventContext;
+import org.hackathon.security.Context;
 import org.hackathon.data.dto.UpdatePhaseConfigDTO;
 import org.hackathon.data.dto.UpdatePhaseDTO;
 import org.hackathon.data.enums.PhaseStatus;
@@ -33,23 +33,23 @@ public class PhaseService {
         }
     }
 
-    public PhaseInfoVO getPhase(EventContext context) {
+    public PhaseInfoVO getPhase(Context ctx) {
         PhaseInfoVO vo = new PhaseInfoVO();
-        BeanUtils.copyProperties(context.getPhase(), vo);
-        vo.setTrackId(context.getTrack().getTrackId());
-        vo.setTrackName(context.getTrack().getName());
-        vo.setEventId(context.getEvent().getEventId());
-        vo.setEventName(context.getEvent().getName());
+        BeanUtils.copyProperties(ctx.phase(), vo);
+        vo.setTrackId(ctx.track().getTrackId());
+        vo.setTrackName(ctx.track().getName());
+        vo.setEventId(ctx.event().getEventId());
+        vo.setEventName(ctx.event().getName());
         return vo;
     }
 
-    public void updatePhase(UpdatePhaseDTO dto, EventContext context) {
-        Phase phase = context.getPhase();
+    public void updatePhase(UpdatePhaseDTO dto, Context ctx) {
+        Phase phase = ctx.phase();
         if (phase.getVersion() > dto.getVersion()) {
             throw new BusinessException(ResultCode.RESOURCE_UPDATED);
         }
         verifyPhaseTime(dto.getSubmitBeg(), dto.getSubmitEnd(), dto.getReviewBeg(), dto.getReviewEnd());
-        Event event = context.getEvent();
+        Event event = ctx.event();
         if (event.getLiveEnd().isBefore(LocalDateTime.now())) {
             throw new BusinessException(ResultCode.EVENT_ALREADY_END);
         }  else if (event.getLiveEnd().isBefore(dto.getReviewEnd()) ||
@@ -57,7 +57,7 @@ public class PhaseService {
             throw new BusinessException(ResultCode.PHASE_EVENT_TIME_CONFLICT);
         }
         List<Phase> phases = phaseMapper.selectList(
-                new LambdaQueryWrapper<Phase>().eq(Phase::getTrackId, context.getTrack().getTrackId())
+                new LambdaQueryWrapper<Phase>().eq(Phase::getTrackId, ctx.track().getTrackId())
                         .ne(Phase::getPhaseId, phase.getPhaseId())
         );
         for (Phase item : phases) {
@@ -76,8 +76,8 @@ public class PhaseService {
         }
     }
 
-    public void updatePhaseConfig (UpdatePhaseConfigDTO dto, EventContext context) {
-        Phase phase = context.getPhase();
+    public void updatePhaseConfig (UpdatePhaseConfigDTO dto, Context ctx) {
+        Phase phase = ctx.phase();
         SubmissionConfig config = new SubmissionConfig();
         BeanUtils.copyProperties(dto, config);
         if (!config.getOpenSource()) config.setLicenseType(null);
@@ -91,8 +91,8 @@ public class PhaseService {
         }
     }
 
-    public void deletePhase(EventContext context) {
-        Phase phase = context.getPhase();
+    public void deletePhase(Context ctx) {
+        Phase phase = ctx.phase();
         if (!(phase.getStatus() == PhaseStatus.PREP)) {
             throw new BusinessException(ResultCode.PHASE_ALREADY_SUBMIT);
         }

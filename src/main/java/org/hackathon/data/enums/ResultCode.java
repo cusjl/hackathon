@@ -11,19 +11,19 @@ public enum ResultCode {
     //1XXX 账号与鉴权
     //10XX  鉴权相关
     //100X   全局权限
-    UNAUTHORIZED(1000, HttpStatus.UNAUTHORIZED, "用户无权限"),
+    UNAUTHORIZED(1000, HttpStatus.FORBIDDEN, "用户无权限"),
     TOKEN_UNREADABLE(1001, HttpStatus.UNAUTHORIZED, "token校验失败"),
     TOKEN_EXPIRED(1002, HttpStatus.UNAUTHORIZED, "token过期"),
     NOT_ENROLLED(1003, HttpStatus.UNAUTHORIZED, "学生尚未注册"),
     TOKEN_IS_BLANK(1004, HttpStatus.UNAUTHORIZED, "未携带token"),
-    NOT_STUDENT(1005, HttpStatus.UNAUTHORIZED, "用户无校内权限"),
-    NOT_SUPER(1006, HttpStatus.UNAUTHORIZED, "用户无超管权限"),
-    NOT_EXTERN(1007, HttpStatus.UNAUTHORIZED, "用户不是外部用户"),
+    NOT_STUDENT(1005, HttpStatus.FORBIDDEN, "用户无校内权限"),
+    NOT_SUPER(1006, HttpStatus.FORBIDDEN, "用户无超管权限"),
+    NOT_EXTERN(1007, HttpStatus.FORBIDDEN, "用户不是外部用户"),
     NOT_ON_CAMPUS(1008, HttpStatus.UNAUTHORIZED, "用户不能转为学生"),
     //101X   赛事权限
-    NOT_ADMIN(1011, HttpStatus.UNAUTHORIZED, "用户无管理员权限"),
-    NOT_JUDGE(1012, HttpStatus.UNAUTHORIZED, "用户无评委权限"),
-    NOT_LEADER(1013, HttpStatus.UNAUTHORIZED, "选手无队长权限"),
+    NOT_ADMIN(1011, HttpStatus.FORBIDDEN, "用户无管理员权限"),
+    NOT_JUDGE(1012, HttpStatus.FORBIDDEN, "用户无评委权限"),
+    NOT_LEADER(1013, HttpStatus.FORBIDDEN, "选手无队长权限"),
     //102X   权限设置
     AUTHORITY_REPEAT(1021, HttpStatus.CONFLICT, "重复授权"),
     LAST_SUPER(1022, HttpStatus.CONFLICT, "最后一名超管无法删除"),
@@ -78,6 +78,11 @@ public enum ResultCode {
     TEAM_ALREADY_FULL(3115, HttpStatus.CONFLICT, "队伍已满员"),
     LEADER_LEAVING(3116, HttpStatus.CONFLICT, "队长不能离队"),
     NOT_TEAM_MEMBER(3117, HttpStatus.CONFLICT, "选手不在队伍中"),
+    //32XX  时间窗
+    NOT_SUBMIT_TIME(3201, HttpStatus.FORBIDDEN, "不在提交时间内"),
+    NOT_REVIEW_TIME(3202, HttpStatus.FORBIDDEN, "不在评审时间内"),
+    NOT_VOTE_TIME(3203, HttpStatus.FORBIDDEN, "不在投票时间内"),
+    PUBLICITY_CLOSED(3204, HttpStatus.FORBIDDEN, "成绩公示期已结束"),
 
 
     //4XXX 通用（全局异常处理）

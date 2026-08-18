@@ -1,17 +1,18 @@
 package org.hackathon.controller;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.hackathon.annotation.Auth;
 import org.hackathon.data.dto.CreateStudentDTO;
 import org.hackathon.data.dto.UpdateStudentDTO;
 import org.hackathon.data.vo.*;
-import org.hackathon.security.jwt.LocalJwt;
+import org.hackathon.security.Context;
+import org.hackathon.security.Require;
 import org.hackathon.service.StudentService;
 import org.hackathon.service.StudentTagService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import static org.hackathon.security.Role.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -45,10 +46,9 @@ public class StudentController {
      * @return vo
      */
     @GetMapping
-    @Auth(onlyStudent = true)
-    public ResponseEntity<Result<StudentInfoVO>> getStudent(HttpServletRequest request) {
-        LocalJwt jwt = (LocalJwt) request.getAttribute("jwt");
-        return Result.success(studentService.getStudent(jwt.getUserId()), "获取成功");
+    @Require(STUDENT)
+    public ResponseEntity<Result<StudentInfoVO>> getStudent(Context ctx) {
+        return Result.success(studentService.getStudent(ctx.userId()), "获取成功");
     }
 
     /**
@@ -57,11 +57,10 @@ public class StudentController {
      * @return ok
      */
     @PutMapping
-    @Auth(onlyStudent = true)
+    @Require(STUDENT)
     public ResponseEntity<Result<Void>> updateStudent(
-            @Valid @RequestBody UpdateStudentDTO dto, HttpServletRequest request) {
-        LocalJwt jwt = (LocalJwt) request.getAttribute("jwt");
-        studentService.updateStudent(dto, jwt.getUserId());
+            @Valid @RequestBody UpdateStudentDTO dto, Context ctx) {
+        studentService.updateStudent(dto, ctx.userId());
         return Result.ok();
     }
 }

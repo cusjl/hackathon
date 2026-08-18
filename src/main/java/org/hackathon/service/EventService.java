@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
-import org.hackathon.data.context.EventContext;
+import org.hackathon.security.Context;
 import org.hackathon.data.dto.*;
 import org.hackathon.data.enums.EventStatus;
 import org.hackathon.data.enums.ResultCode;
@@ -59,8 +59,8 @@ public class EventService {
         return event.getEventId();
     }
 
-    public Integer createTrack(CreateTrackDTO dto, EventContext context) {
-        Event event = context.getEvent();
+    public Integer createTrack(CreateTrackDTO dto, Context ctx) {
+        Event event = ctx.event();
         if (event.getRegBeg().isBefore(LocalDateTime.now())) {
             throw new BusinessException(ResultCode.EVENT_ALREADY_REG);
         }
@@ -74,8 +74,8 @@ public class EventService {
         return track.getTrackId();
     }
 
-    public EventInfoVO getEvent(EventContext context) {
-        Event event = context.getEvent();
+    public EventInfoVO getEvent(Context ctx) {
+        Event event = ctx.event();
         EventInfoVO vo = new EventInfoVO();
         BeanUtils.copyProperties(event, vo);
         List<TrackBriefVO> list = trackMapper.selectList(
@@ -92,9 +92,9 @@ public class EventService {
         return trackMapper.selectList(wrapper).stream().map(Track::getTrackId).toList();
     }
 
-    public void updateEvent(UpdateEventDTO dto, EventContext context) {
+    public void updateEvent(UpdateEventDTO dto, Context ctx) {
         verifyEventTime(dto.getRegBeg(), dto.getRegEnd(), dto.getLiveBeg(), dto.getLiveEnd());
-        Event event = context.getEvent();
+        Event event = ctx.event();
         if (event.getRegBeg().isBefore(LocalDateTime.now())) {
             throw new BusinessException(ResultCode.EVENT_ALREADY_REG);
         }
@@ -123,11 +123,11 @@ public class EventService {
         }
     }
 
-    public void deleteEvent(EventContext context) {
-        if (!(context.getEvent().getStatus() == EventStatus.PREP)) {
+    public void deleteEvent(Context ctx) {
+        if (!(ctx.event().getStatus() == EventStatus.PREP)) {
             throw new BusinessException(ResultCode.EVENT_ALREADY_REG);
         }
-            Integer eventId = context.getEvent().getEventId();
+            Integer eventId = ctx.event().getEventId();
         long count = trackMapper.selectCount(new LambdaQueryWrapper<Track>().eq(Track::getEventId, eventId));
         if (count > 0) {
             throw new BusinessException(ResultCode.BINDING_TRACK);

@@ -37,12 +37,12 @@ public class AuthService {
     }
 
     public LoginVO exchangeToken(String temp) {
-        LocalJwt jwt = localJwtUtils.parseToken(temp);
-        if (jwt.getUserId() == -1) {
+        LocalJwt jwt = localJwtUtils.parseToken(temp, LocalJwt.Type.EXCHANGE);
+        if (jwt.getUserId() == null) {
             throw new BusinessException(ResultCode.NOT_ENROLLED);
         }
         return new LoginVO(
-                localJwtUtils.generateToken(jwt, false), jwt.getName(), true,
+                localJwtUtils.generateToken(jwt, LocalJwt.Type.ACCESS), jwt.getName(), true,
                         jwt.getCasId(), authorityService.getAuthorityListByUser(jwt.getUserId())
         );
     }
@@ -81,7 +81,7 @@ public class AuthService {
         jwt.setStudentFlag(user.getStudentFlag());
         jwt.setName(user.getName());
         jwt.setCasId(user.getStudentFlag() ? dto.getTerm() : null);
-        String token = localJwtUtils.generateToken(jwt, false);
+        String token = localJwtUtils.generateToken(jwt, LocalJwt.Type.ACCESS);
         return new LoginVO(
                 token, jwt.getName(), jwt.getStudentFlag(), jwt.getCasId(),
                 authorityService.getAuthorityListByUser(jwt.getUserId())

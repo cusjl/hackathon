@@ -1,18 +1,18 @@
 package org.hackathon.controller;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.hackathon.annotation.Auth;
-import org.hackathon.annotation.EventAuth;
 import org.hackathon.data.dto.UserIdDTO;
 import org.hackathon.data.vo.*;
-import org.hackathon.security.jwt.LocalJwt;
+import org.hackathon.security.Context;
+import org.hackathon.security.Require;
 import org.hackathon.service.AuthorityService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+
+import static org.hackathon.security.Role.*;
 
 @RestController
 @RequestMapping("/authority")
@@ -27,7 +27,7 @@ public class AuthorityController {
      * @return ok
      */
     @PostMapping("/super")
-    @Auth(onlySuper = true)
+    @Require(SUPER)
     public ResponseEntity<Result<Void>> createSuper(@RequestBody @Valid UserIdDTO dto) {
         authorityService.createSuper(dto.getUserId());
         return Result.ok();
@@ -38,10 +38,9 @@ public class AuthorityController {
      * @return ok
      */
     @DeleteMapping("/super-self")
-    @Auth(onlySuper = true)
-    public ResponseEntity<Result<Void>> deleteSuperSelf(HttpServletRequest request) {
-        LocalJwt jwt = (LocalJwt) request.getAttribute("jwt");
-        authorityService.deleteSuper(jwt.getUserId());
+    @Require(SUPER)
+    public ResponseEntity<Result<Void>> deleteSuperSelf(Context ctx) {
+        authorityService.deleteSuper(ctx.userId());
         return Result.ok();
     }
 
@@ -52,7 +51,7 @@ public class AuthorityController {
      * @return ok
      */
     @PostMapping("/admin/{eventId}")
-    @Auth(onlySuper = true)
+    @Require(SUPER)
     public ResponseEntity<Result<Void>> createAdmin(
             @PathVariable Integer eventId, @RequestBody @Valid UserIdDTO dto) {
         authorityService.createAdmin(dto.getUserId(), eventId);
@@ -66,7 +65,7 @@ public class AuthorityController {
      * @return ok
      */
     @DeleteMapping("/admin/{eventId}")
-    @Auth(onlySuper = true)
+    @Require(SUPER)
     public ResponseEntity<Result<Void>> deleteAdmin(
             @PathVariable Integer eventId, @RequestBody @Valid UserIdDTO dto) {
         authorityService.deleteAdmin(dto.getUserId(), eventId);
@@ -79,11 +78,10 @@ public class AuthorityController {
      * @return ok
      */
     @DeleteMapping("/admin-self/{eventId}")
-    @EventAuth(mode = "ADMIN", var = "EVENT")
+    @Require(EVENT_ADMIN)
     public ResponseEntity<Result<Void>> deleteAdminSelf(
-            @PathVariable Integer eventId, HttpServletRequest request) {
-        LocalJwt jwt = (LocalJwt) request.getAttribute("jwt");
-        authorityService.deleteAdmin(jwt.getUserId(), eventId);
+            @PathVariable Integer eventId, Context ctx) {
+        authorityService.deleteAdmin(ctx.userId(), eventId);
         return Result.ok();
     }
 
@@ -94,7 +92,7 @@ public class AuthorityController {
      * @return ok
      */
     @PostMapping("/judge/{eventId}")
-    @EventAuth(mode = "ADMIN", var = "EVENT")
+    @Require(EVENT_ADMIN)
     public ResponseEntity<Result<Void>> createJudge(
             @PathVariable Integer eventId, @RequestBody @Valid UserIdDTO dto) {
         authorityService.createJudge(dto.getUserId(), eventId);
@@ -108,7 +106,7 @@ public class AuthorityController {
      * @return ok
      */
     @DeleteMapping("/judge/{eventId}")
-    @EventAuth(mode = "ADMIN", var = "EVENT")
+    @Require(EVENT_ADMIN)
     public ResponseEntity<Result<Void>> deleteJudge(
             @PathVariable Integer eventId, @RequestBody @Valid UserIdDTO dto) {
         authorityService.deleteJudge(dto.getUserId(), eventId);
@@ -121,11 +119,10 @@ public class AuthorityController {
      * @return ok
      */
     @DeleteMapping("/judge-self/{eventId}")
-    @EventAuth(mode = "JUDGE", var = "EVENT")
+    @Require(EVENT_JUDGE)
     public ResponseEntity<Result<Void>> deleteJudgeSelf(
-            @PathVariable Integer eventId, HttpServletRequest request) {
-        LocalJwt jwt = (LocalJwt) request.getAttribute("jwt");
-        authorityService.deleteJudge(jwt.getUserId(), eventId);
+            @PathVariable Integer eventId, Context ctx) {
+        authorityService.deleteJudge(ctx.userId(), eventId);
         return Result.ok();
     }
 
@@ -135,7 +132,6 @@ public class AuthorityController {
      * @return 简表
      */
     @GetMapping("/event/{eventId}")
-    @EventAuth(mode = "GUEST", var = "EVENT")
     public ResponseEntity<Result<List<AuthorityUserVO>>> getAuthorityListByEvent(
             @PathVariable Integer eventId) {
         return Result.success(authorityService.getAuthorityListByEvent(eventId), "获取成功");
@@ -147,7 +143,7 @@ public class AuthorityController {
      * @return 列表
      */
     @GetMapping("/user/{userId}")
-    @Auth(onlySuper = true)
+    @Require(SUPER)
     public ResponseEntity<Result<List<AuthorityEventVO>>> getAuthorityListByUser(
             @PathVariable Integer userId) {
         return Result.success(authorityService.getAuthorityListByUserWithCheck(userId), "获取成功");

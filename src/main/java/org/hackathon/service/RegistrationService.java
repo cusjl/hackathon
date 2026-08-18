@@ -2,7 +2,7 @@ package org.hackathon.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
-import org.hackathon.data.context.EventContext;
+import org.hackathon.security.Context;
 import org.hackathon.data.dto.UpdateRegistrationDTO;
 import org.hackathon.data.enums.EventStatus;
 import org.hackathon.data.enums.ResultCode;
@@ -23,11 +23,9 @@ public class RegistrationService {
     private final RegistrationMapper regMapper;
     private final TrackMapper trackMapper;
 
-    public void createRegistration(EventContext context, Integer userId) {
-        Event event = context.getEvent();
-        if (event.getStatus() != EventStatus.REG) {
-            throw new BusinessException(ResultCode.NOT_REGISTER_TIME);
-        }
+    public void createRegistration(Context ctx) {
+        Integer userId = ctx.userId();
+        Event event = ctx.event();
         long count  = regMapper.selectCount(new LambdaQueryWrapper<Registration>()
                 .eq(Registration::getUserId, userId)
                 .in(Registration::getEventId, event.getEventId())
@@ -36,14 +34,15 @@ public class RegistrationService {
             throw new BusinessException(ResultCode.REGISTRATION_REPEAT);
         }
         Registration registration = new Registration(
-                null, userId, event.getEventId(), context.getTrack().getTrackId(),
+                null, userId, event.getEventId(), ctx.track().getTrackId(),
                 null, 1, LocalDateTime.now(), LocalDateTime.now()
         );
         regMapper.insert(registration);
     }
 
-    public RegistrationVO getRegistration(EventContext context, Integer userId) {
-        Event event = context.getEvent();
+    public RegistrationVO getRegistration(Context ctx) {
+        Integer userId = ctx.userId();
+        Event event = ctx.event();
         if (event.getStatus() == EventStatus.PREP) {
             return new RegistrationVO(false, null, null, null);
         }
@@ -74,8 +73,9 @@ public class RegistrationService {
         return registration;
     }
 
-    public void updateRegistration(UpdateRegistrationDTO dto, EventContext context, Integer userId) {
-        Event event = context.getEvent();
+    public void updateRegistration(UpdateRegistrationDTO dto, Context ctx) {
+        Integer userId = ctx.userId();
+        Event event = ctx.event();
         Registration registration = verifyCondition(userId, event);
         Track track = trackMapper.selectById(dto.getTrackId());
         if (track == null || !track.getEventId().equals(event.getEventId())) {
@@ -89,8 +89,9 @@ public class RegistrationService {
         }
     }
 
-    public void deleteRegistration(EventContext context, Integer userId) {
-        Event event = context.getEvent();
+    public void deleteRegistration(Context ctx) {
+        Integer userId = ctx.userId();
+        Event event = ctx.event();
         Registration registration = verifyCondition(userId, event);
         regMapper.deleteById(registration.getId());
     }

@@ -32,6 +32,10 @@ public class Phase {
     private BigDecimal passRate;
     //大众投票
     private Boolean poll;
+    private LocalDateTime pollBeg;
+    private LocalDateTime pollEnd;
+    private Integer pollDailyCap;
+    private LocalDateTime publicityEnd;
     @TableField(typeHandler = Jackson3TypeHandler.class)
     private SubmissionConfig submissionConfig;
     @Version

@@ -53,7 +53,7 @@ public class StudentService {
     @Transactional
     public CreateStudentVO createStudent(CreateStudentDTO dto) {
         verifyTags(dto.getTags());
-        LocalJwt jwt = localJwtUtils.parseToken(dto.getToken());
+        LocalJwt jwt = localJwtUtils.parseToken(dto.getToken(), LocalJwt.Type.REGISTER);
         long count = studentMapper.selectCount(
                 new LambdaQueryWrapper<Student>().eq(Student::getCasId, jwt.getCasId())
         );
@@ -98,7 +98,7 @@ public class StudentService {
         studentMapper.insert(student);
         jwt.setUserId(user.getUserId());
         return new CreateStudentVO(
-                localJwtUtils.generateToken(jwt, false), jwt.getName(),
+                localJwtUtils.generateToken(jwt, LocalJwt.Type.ACCESS), jwt.getName(),
                 true, jwt.getCasId(), existed,
                 existed ? authorityService.getAuthorityListByUser(user.getUserId()) : List.of()
         );

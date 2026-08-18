@@ -42,9 +42,9 @@ public class AuthController {
     @PostMapping("/test")
     public ResponseEntity<Result<String>> getTempToken(@RequestBody @Valid SduPassTestDTO dto) {
         Integer id = authService.examineStudent(dto.getCasId());
-        id = id == null ? -1 : id;
         LocalJwt jwt = new LocalJwt(id, dto.getName(), true, dto.getCasId());
-        return Result.success(localJwtUtils.generateToken(jwt, true), "生成成功");
+        LocalJwt.Type type = id == null ? LocalJwt.Type.REGISTER : LocalJwt.Type.EXCHANGE;
+        return Result.success(localJwtUtils.generateToken(jwt, type), "生成成功");
     }
 
     /**
@@ -62,12 +62,12 @@ public class AuthController {
         String url = globalProperties.frontendUrl();
         if (id == null) {
             String token = localJwtUtils.generateToken(
-                    new LocalJwt(-1, payload.name(), true, payload.casID()), true
+                    new LocalJwt(null, payload.name(), true, payload.casID()), LocalJwt.Type.REGISTER
             );
             url += globalProperties.registerPath() + "?token=" + token;
         } else {
             String token = localJwtUtils.generateToken(
-                    new LocalJwt(id, payload.name(), true, payload.casID()), true
+                    new LocalJwt(id, payload.name(), true, payload.casID()), LocalJwt.Type.EXCHANGE
             );
             url += globalProperties.redirectPath() + "?token=" + token;
         }

@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import lombok.RequiredArgsConstructor;
 import org.hackathon.config.GlobalProperties;
-import org.hackathon.data.context.EventContext;
+import org.hackathon.security.Context;
 import org.hackathon.data.dto.CreateTeamDTO;
 import org.hackathon.data.dto.UpdateTeamDTO;
 import org.hackathon.data.enums.ResultCode;
@@ -38,9 +38,10 @@ public class TeamService {
     private final GlobalProperties globalProperties;
 
     @Transactional
-    public Integer createTeam(CreateTeamDTO dto, EventContext context, Integer userId) {
-        Event event = context.getEvent();
-        Integer trackId = context.getTrack().getTrackId();
+    public Integer createTeam(CreateTeamDTO dto, Context ctx) {
+        Integer userId = ctx.userId();
+        Event event = ctx.event();
+        Integer trackId = ctx.track().getTrackId();
         if (event.getLiveBeg().isBefore(LocalDateTime.now())) {
             throw new BusinessException(ResultCode.EVENT_ALREADY_LIVE);
         }
@@ -87,13 +88,9 @@ public class TeamService {
         )).toList();
     }
 
-    public TeamInfoVO getTeam(Team team, Integer userId) {
+    public TeamInfoVO getTeam(Context ctx) {
+        Team team = ctx.team();
         TeamInfoVO vo = new TeamInfoVO();
-        if (regMapper.selectCount(
-                new LambdaQueryWrapper<Registration>().eq(Registration::getTeamId, team.getTeamId())
-                        .eq(Registration::getUserId, userId)) == 0) {
-            throw new BusinessException(ResultCode.NOT_TEAM_MEMBER);
-        }
         BeanUtils.copyProperties(team, vo);
         vo.setEventName(eventMapper.selectById(team.getEventId()).getName());
         vo.setTrackName(trackMapper.selectById(team.getTrackId()).getName());
@@ -101,7 +98,8 @@ public class TeamService {
         return vo;
     }
 
-    public void updateTeam(UpdateTeamDTO dto, Team team) {
+    public void updateTeam(UpdateTeamDTO dto, Context ctx) {
+        Team team = ctx.team();
         if (eventMapper.selectById(team.getEventId()).getLiveBeg().isBefore(LocalDateTime.now())) {
             throw new BusinessException(ResultCode.EVENT_ALREADY_LIVE);
         }
@@ -128,7 +126,8 @@ public class TeamService {
     }
 
     @Transactional
-    public void joinTeam(Team team, Integer userId) {
+    public void joinTeam(Context ctx, Integer userId) {
+        Team team = ctx.team();
         if (eventMapper.selectById(team.getEventId()).getLiveBeg().isBefore(LocalDateTime.now())) {
             throw new BusinessException(ResultCode.EVENT_ALREADY_LIVE);
         }
@@ -168,7 +167,8 @@ public class TeamService {
     }
 
     @Transactional
-    public void leaveTeam(Team team, Integer userId) {
+    public void leaveTeam(Context ctx, Integer userId) {
+        Team team = ctx.team();
         if (eventMapper.selectById(team.getEventId()).getLiveBeg().isBefore(LocalDateTime.now())) {
             throw new BusinessException(ResultCode.EVENT_ALREADY_LIVE);
         }
@@ -195,7 +195,8 @@ public class TeamService {
     }
 
     @Transactional
-    public void deleteTeam(Team team) {
+    public void deleteTeam(Context ctx) {
+        Team team = ctx.team();
         if (eventMapper.selectById(team.getEventId()).getLiveBeg().isBefore(LocalDateTime.now())) {
             throw new BusinessException(ResultCode.EVENT_ALREADY_LIVE);
         }
