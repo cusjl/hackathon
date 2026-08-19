@@ -84,8 +84,20 @@ public enum ResultCode {
     NOT_VOTE_TIME(3203, HttpStatus.FORBIDDEN, "不在投票时间内"),
     PUBLICITY_CLOSED(3204, HttpStatus.FORBIDDEN, "成绩公示期已结束"),
 
+    //6XXX 文件相关
+    FILE_NOT_FOUND(6001, HttpStatus.NOT_FOUND, "文件不存在"),
+    FILE_TYPE_NOT_ALLOWED(6002, HttpStatus.BAD_REQUEST, "不支持的文件类型"),
+    FILE_TOO_LARGE(6003, HttpStatus.CONTENT_TOO_LARGE, "文件超出大小限制"),
+    FILE_NOT_UPLOADED(6004, HttpStatus.CONFLICT, "文件尚未完成上传"),
+    FILE_NOT_READY(6005, HttpStatus.CONFLICT, "文件状态不可用"),
+    FILE_SCOPE_MISMATCH(6006, HttpStatus.BAD_REQUEST, "文件用途不匹配"),
+    FILE_SYSTEM_ONLY(6007, HttpStatus.FORBIDDEN, "该类文件由系统生成"),
+    SUBMIT_ITEM_DISABLED(6008, HttpStatus.FORBIDDEN, "本轮未开启该提交项"),
+    FILE_NAME_ILLEGAL(6009, HttpStatus.BAD_REQUEST, "文件名非法"),
+    STORAGE_ERROR(6010, HttpStatus.INTERNAL_SERVER_ERROR, "存储服务异常"),
 
     //4XXX 通用（全局异常处理）
+    //PARAM_ERROR的msg通过Validation抛出具体错误，详见各参数message
     PARAM_ERROR(4000, HttpStatus.BAD_REQUEST, "参数错误"),
     RESOURCE_CONFLICT(4001, HttpStatus.CONFLICT, "资源冲突"),
     RESOURCE_UPDATED(4002, HttpStatus.CONFLICT, "存在已更新资源，请刷新重试"),

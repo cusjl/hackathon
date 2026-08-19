@@ -20,6 +20,17 @@ jwt:
     salt: KOISHIKISHIKAWAIIKAWAIIKISSKISSLOVELY
     iteration-cound: 114514
     key-length: 256
+storage:
+  s3:
+    endpoint: ${S3_ENDPOINT}
+    region: ${S3_REGION}
+    access-key-id: ${S3_ACCESS_KEY_ID}
+    secret-access-key: ${S3_SECRET_ACCESS_KEY}
+    bucket-name: ${S3_BUCKET_NAME}
+    path-style: ${S3_PATH_STYLE:true}
+    put-expire-minutes: ${S3_PUT_EXPIRE_MINUTES:30}
+    pending-expire-hours: ${S3_PENDING_EXPIRE_HOURS:24}
+    deleted-retain-hours: ${S3_DELETED_RETAIN_HOURS:168}
 hackathon:
   frontend-url:
   register-path:

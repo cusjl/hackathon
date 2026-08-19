@@ -74,6 +74,14 @@ public class Context {
         return ids;
     }
 
+    public Context anchor(Map<String, Integer> ids) {
+        Map<String, Integer> merged = new HashMap<>(pathIds);
+        ids.forEach((k, v) -> {
+            if (v != null && PATH_IDS.contains(k)) merged.put(k, v);
+        });
+        return new Context(jwt, auth, merged, deps);
+    }
+
     public boolean isAuthenticated() { return auth == LocalJwt.Auth.OK; }
 
     public boolean isStudent() { return isAuthenticated() && Boolean.TRUE.equals(jwt.getStudentFlag()); }
