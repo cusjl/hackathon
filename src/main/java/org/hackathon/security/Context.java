@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.hackathon.data.enums.ResultCode;
 import org.hackathon.data.po.Event;
 import org.hackathon.data.po.Phase;
+import org.hackathon.data.po.Submission;
 import org.hackathon.data.po.Team;
 import org.hackathon.data.po.Track;
 import org.hackathon.exception.BusinessException;
@@ -31,10 +32,14 @@ public class Context {
             TrackMapper track,
             PhaseMapper phase,
             TeamMapper team,
-            RegistrationMapper registration
+            RegistrationMapper registration,
+            SubmissionMapper submission,
+            ReviewAssignmentMapper assignment,
+            ReviewFlagMapper flag
     ) {}
 
-    private static final Set<String> PATH_IDS = Set.of("eventId", "trackId", "phaseId", "teamId", "userId");
+    private static final Set<String> PATH_IDS =
+            Set.of("eventId", "trackId", "phaseId", "teamId", "userId", "submissionId");
 
     private final LocalJwt jwt;
     private final LocalJwt.Auth auth;
@@ -45,8 +50,10 @@ public class Context {
     private Track track;
     private Phase phase;
     private Team team;
+    private Submission submission;
 
-    private Boolean isSuperCached, isEventAdminCached, isEventJudgeCached, isTeamMemberCached;
+    private Boolean isSuperCached, isEventAdminCached, isEventJudgeCached, isTeamMemberCached,
+            isAssignedJudgeCached;
 
     private Context(LocalJwt jwt, LocalJwt.Auth auth, Map<String, Integer> pathIds, Deps deps) {
         this.jwt = jwt; this.auth = auth; this.pathIds = pathIds; this.deps = deps;
@@ -110,7 +117,13 @@ public class Context {
     void requireConsistentPath() {
         if (pathIds.size() < 2) return;
         boolean hasEvent = pathIds.containsKey("eventId"), hasTrack = pathIds.containsKey("trackId"),
-                hasPhase = pathIds.containsKey("phaseId"), hasTeam = pathIds.containsKey("teamId");
+                hasPhase = pathIds.containsKey("phaseId"), hasTeam = pathIds.containsKey("teamId"),
+                hasSubmission = pathIds.containsKey("submissionId");
+
+        if (hasSubmission && hasTeam && !submission().getTeamId().equals(pathIds.get("teamId")))
+            throw new BusinessException(ResultCode.SUBMISSION_NOT_FOUND);
+        if (hasSubmission && hasPhase && !submission().getPhaseId().equals(pathIds.get("phaseId")))
+            throw new BusinessException(ResultCode.SUBMISSION_NOT_FOUND);
 
         if (hasTrack && hasEvent && !track().getEventId().equals(pathIds.get("eventId")))
             throw new BusinessException(ResultCode.TRACK_NOT_FOUND);
@@ -137,6 +150,17 @@ public class Context {
             case VOTE -> requireBetween(now, phase().getPollBeg(), phase().getPollEnd(),
                     ResultCode.NOT_VOTE_TIME);
             case PUBLICITY -> requireBefore(now, phase().getPublicityEnd(), ResultCode.PUBLICITY_CLOSED);
+            case SUPPLEMENT -> requireSupplementWindow(now);
+        }
+    }
+
+    /**
+     * 补交窗口：只有当作品上存在评委开出的、尚未处理且未过期的异常标记时才放行。
+     * 该窗口独立于 SUBMIT，既不放宽提交时间窗，也不改变作品的锁定状态。
+     */
+    private void requireSupplementWindow(LocalDateTime now) {
+        if (deps.flag().selectOpenWindows(submission().getSubmissionId(), now).isEmpty()) {
+            throw new BusinessException(ResultCode.SUPPLEMENT_WINDOW_CLOSED);
         }
     }
 
@@ -152,9 +176,19 @@ public class Context {
         }
     }
 
+    public Submission submission() {
+        if (submission != null) return submission;
+        Integer id = pathIds.get("submissionId");
+        if (id == null) throw new BusinessException(ResultCode.PARAM_ERROR, "路径中无法定位作品");
+        submission = deps.submission().selectById(id);
+        if (submission == null) throw new BusinessException(ResultCode.SUBMISSION_NOT_FOUND);
+        return submission;
+    }
+
     public Phase phase() {
         if (phase != null) return phase;
         Integer id = pathIds.get("phaseId");
+        if (id == null && pathIds.containsKey("submissionId")) id = submission().getPhaseId();
         if (id == null) throw new BusinessException(ResultCode.PARAM_ERROR, "路径中无法定位轮次");
         phase = deps.phase().selectById(id);
         if (phase == null) throw new BusinessException(ResultCode.PHASE_NOT_FOUND);
@@ -164,6 +198,7 @@ public class Context {
     public Team team() {
         if (team != null) return team;
         Integer id = pathIds.get("teamId");
+        if (id == null && pathIds.containsKey("submissionId")) id = submission().getTeamId();
         if (id == null) throw new BusinessException(ResultCode.PARAM_ERROR, "路径中无法定位队伍");
         team = deps.team().selectById(id);
         if (team == null) throw new BusinessException(ResultCode.TEAM_NOT_FOUND);
@@ -173,8 +208,8 @@ public class Context {
     public Track track() {
         if (track != null) return track;
         Integer id = pathIds.get("trackId");
-        if (id == null && pathIds.containsKey("phaseId")) id = phase().getTrackId();
-        if (id == null && pathIds.containsKey("teamId"))  id = team().getTrackId();
+        if (id == null && hasPhase()) id = phase().getTrackId();
+        if (id == null && hasTeam())  id = team().getTrackId();
         if (id == null) throw new BusinessException(ResultCode.PARAM_ERROR, "路径中无法定位赛道");
         track = deps.track().selectById(id);
         if (track == null) throw new BusinessException(ResultCode.TRACK_NOT_FOUND);
@@ -184,15 +219,22 @@ public class Context {
     public Event event() {
         if (event != null) return event;
         Integer id = pathIds.get("eventId");
-        if (id == null) id = pathIds.containsKey("teamId") ? team().getEventId()
-                : track().getEventId();
+        if (id == null) id = hasTeam() ? team().getEventId() : track().getEventId();
         event = deps.event().selectById(id);
         if (event == null) throw new BusinessException(ResultCode.EVENT_NOT_FOUND);
         return event;
     }
 
+    private boolean hasPhase() {
+        return pathIds.containsKey("phaseId") || pathIds.containsKey("submissionId");
+    }
+
+    private boolean hasTeam() {
+        return pathIds.containsKey("teamId") || pathIds.containsKey("submissionId");
+    }
+
     public Optional<Phase> phaseOpt() {
-        return pathIds.containsKey("phaseId") ? Optional.of(phase()) : Optional.empty();
+        return hasPhase() ? Optional.of(phase()) : Optional.empty();
     }
 
     @SuppressWarnings("uncheck")
@@ -234,8 +276,25 @@ public class Context {
         return isTeamMemberCached;
     }
 
-    boolean isAssignedJudge()   { throw new UnsupportedOperationException("评审模块尚未实现"); }
-    boolean isSubmissionOwner() { throw new UnsupportedOperationException("评审模块尚未实现"); }
+    /**
+     * 被指派到该作品、且任务仍由其持有的评委。回避或移交之后判定即失效。
+     */
+    boolean isAssignedJudge() {
+        if (isAssignedJudgeCached == null) {
+            isAssignedJudgeCached = isEventJudge()
+                    && deps.assignment().existsHeld(submission().getSubmissionId(), userId());
+        }
+        return isAssignedJudgeCached;
+    }
+
+    /**
+     * 作品归属队伍的成员（含队长）。作品定位后队伍即随之确定，故复用队员判定。
+     */
+    boolean isSubmissionOwner() {
+        submission();
+        return isTeamMember();
+    }
+
     boolean isCertOwner()       { throw new UnsupportedOperationException("证书模块尚未实现"); }
 
     public View view() {

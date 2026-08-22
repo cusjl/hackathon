@@ -10,14 +10,14 @@ public class UpdatePhaseConfigDTO {
     @JsonSetter(nulls = Nulls.SKIP)
     private Boolean repository = false;
     @JsonSetter(nulls = Nulls.SKIP)
-    private Boolean OpenSource = false;
+    private Boolean openSource = false;
     private String licenseType;
     @JsonSetter(nulls = Nulls.SKIP)
     private Boolean zip = false;
     private Integer maxSizeMB;
     @JsonSetter(nulls = Nulls.SKIP)
     private Boolean video = false;
-    private Integer maxMinute;
+    private Integer videoMaxSizeMB;
     @JsonSetter(nulls = Nulls.SKIP)
     private Boolean powerpoint = false;
     @JsonSetter(nulls = Nulls.SKIP)

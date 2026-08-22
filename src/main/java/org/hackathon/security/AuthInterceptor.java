@@ -56,7 +56,8 @@ public class AuthInterceptor implements HandlerInterceptor, HandlerMethodArgumen
             case EXTERN -> ResultCode.NOT_EXTERN;
             case SUPER -> ResultCode.NOT_SUPER;
             case EVENT_ADMIN -> ResultCode.NOT_ADMIN;
-            case EVENT_JUDGE, ASSIGNED_JUDGE -> ResultCode.NOT_JUDGE;
+            case EVENT_JUDGE -> ResultCode.NOT_JUDGE;
+            case ASSIGNED_JUDGE -> ResultCode.NOT_ASSIGNED_JUDGE;
             case TEAM_LEADER -> ResultCode.NOT_LEADER;
             default -> ResultCode.UNAUTHORIZED;
         };

@@ -42,7 +42,29 @@ public enum ResultCode {
     //112X   外部账号
     EX_USER_NOT_EXIST(1121, HttpStatus.NOT_FOUND, "外部用户不存在"),
 
-    //2XXX
+    //2XXX 评审相关
+    //20XX  评分维度
+    DIMENSION_NOT_FOUND(2001, HttpStatus.NOT_FOUND, "评分维度不存在"),
+    DIMENSION_ALREADY_EXIST(2002, HttpStatus.CONFLICT, "评分维度已存在"),
+    DIMENSION_UNSET(2003, HttpStatus.CONFLICT, "本轮尚未配置评分维度"),
+    DIMENSION_LOCKED(2004, HttpStatus.CONFLICT, "已有评委完成打分，维度不可增删改"),
+    DIMENSION_MISMATCH(2005, HttpStatus.BAD_REQUEST, "打分维度与本轮配置不一致"),
+    SCORE_OUT_OF_RANGE(2006, HttpStatus.BAD_REQUEST, "打分超出该维度分值范围"),
+    //21XX  评委指派与回避
+    ASSIGNMENT_NOT_FOUND(2101, HttpStatus.NOT_FOUND, "评审任务不存在"),
+    ASSIGNMENT_REPEAT(2102, HttpStatus.CONFLICT, "该评委已被指派该作品"),
+    NOT_ASSIGNED_JUDGE(2103, HttpStatus.FORBIDDEN, "评委未被指派该作品"),
+    JUDGE_CONFLICT_INTEREST(2104, HttpStatus.CONFLICT, "该评委与作品存在利益冲突"),
+    NO_AVAILABLE_JUDGE(2105, HttpStatus.CONFLICT, "无可分发的无利益冲突评委"),
+    ASSIGNMENT_CLOSED(2106, HttpStatus.CONFLICT, "评审任务已回避或已移交"),
+    ASSIGNMENT_UNSCORED(2107, HttpStatus.CONFLICT, "该评委尚未完成打分"),
+    //22XX  异常标记与补交
+    FLAG_NOT_FOUND(2201, HttpStatus.NOT_FOUND, "异常标记不存在"),
+    FLAG_REPEAT(2202, HttpStatus.CONFLICT, "该提交项已有未处理的异常标记"),
+    FLAG_ITEM_DISABLED(2203, HttpStatus.CONFLICT, "本轮未开启该提交项，无法标记异常"),
+    FLAG_CLOSED(2204, HttpStatus.CONFLICT, "异常标记已处理"),
+    SUPPLEMENT_WINDOW_CLOSED(2205, HttpStatus.FORBIDDEN, "不在补交窗口内"),
+    SUPPLEMENT_TOO_LONG(2206, HttpStatus.BAD_REQUEST, "补交窗口时长超出上限"),
 
     //3XXX 赛事相关
     //30XX  赛事架构
@@ -83,6 +105,13 @@ public enum ResultCode {
     NOT_REVIEW_TIME(3202, HttpStatus.FORBIDDEN, "不在评审时间内"),
     NOT_VOTE_TIME(3203, HttpStatus.FORBIDDEN, "不在投票时间内"),
     PUBLICITY_CLOSED(3204, HttpStatus.FORBIDDEN, "成绩公示期已结束"),
+    //33XX  作品提交
+    SUBMISSION_NOT_FOUND(3301, HttpStatus.NOT_FOUND, "作品不存在"),
+    SUBMISSION_LOCKED(3302, HttpStatus.FORBIDDEN, "作品已锁定，无法修改"),
+    SUBMISSION_ITEM_REQUIRED(3303, HttpStatus.BAD_REQUEST, "缺少必填提交项"),
+    SUBMISSION_VERSION_NOT_FOUND(3304, HttpStatus.NOT_FOUND, "作品历史版本不存在"),
+    LICENSE_NOT_ALLOWED(3305, HttpStatus.CONFLICT, "开源许可协议不符合要求"),
+    SUBMISSION_FILE_MISMATCH(3306, HttpStatus.BAD_REQUEST, "文件不属于本队本轮作品"),
 
     //6XXX 文件相关
     FILE_NOT_FOUND(6001, HttpStatus.NOT_FOUND, "文件不存在"),

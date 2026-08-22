@@ -19,6 +19,8 @@ public @interface Require {
         SUBMIT,
         REVIEW,
         VOTE,
-        PUBLICITY
+        PUBLICITY,
+        //评委开出异常标记后，队长针对该作品的受限补交窗口
+        SUPPLEMENT
     }
 }

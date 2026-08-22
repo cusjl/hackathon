@@ -107,11 +107,18 @@ public enum FileScope {
         return maxSizeMB * 1024L * 1024L;
     }
 
+    /**
+     * 管理员在本轮配置的体积上限只能收紧、不能放宽枚举自身的固定上限
+     */
     public long effectiveMaxBytes(SubmissionConfig config) {
-        if (config == null || this != SUBMIT_ARCHIVE || config.getMaxSizeMB() == null) {
-            return maxSizeBytes();
-        }
-        return Math.min(maxSizeBytes(), config.getMaxSizeMB() * 1024L * 1024L);
+        if (config == null) return maxSizeBytes();
+        Integer configured = switch (this) {
+            case SUBMIT_ARCHIVE -> config.getMaxSizeMB();
+            case SUBMIT_VIDEO -> config.getVideoMaxSizeMB();
+            default -> null;
+        };
+        if (configured == null) return maxSizeBytes();
+        return Math.min(maxSizeBytes(), configured * 1024L * 1024L);
     }
 
     public boolean enabledIn(SubmissionConfig config, Phase phase) {

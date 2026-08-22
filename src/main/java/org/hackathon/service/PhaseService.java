@@ -82,7 +82,7 @@ public class PhaseService {
         BeanUtils.copyProperties(dto, config);
         if (!config.getOpenSource()) config.setLicenseType(null);
         if (!config.getZip()) config.setMaxSizeMB(null);
-        if (!config.getVideo()) config.setMaxMinute(null);
+        if (!config.getVideo()) config.setVideoMaxSizeMB(null);
         phase.setSubmissionConfig(config);
         phase.setVersion(dto.getVersion());
         phase.setUpdateTime(LocalDateTime.now());

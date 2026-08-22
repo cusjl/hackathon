@@ -47,6 +47,15 @@ public class FileController {
         return Result.success(fileService.presign(dto, SUBMIT, ctx), "已签发上传凭证");
     }
 
+    /**
+     * 补交窗口内的作品文件上传，仅在作品存在未过期的异常标记时放行
+     */
+    @PostMapping("/submission/{submissionId}/supplement")
+    @Require(value = TEAM_LEADER, window = Require.Window.SUPPLEMENT)
+    public ResponseEntity<Result<UploadVO>> uploadSupplement(@Valid @RequestBody UploadDTO dto, Context ctx) {
+        return Result.success(fileService.presign(dto, SUBMIT, ctx), "已签发上传凭证");
+    }
+
     @PostMapping("/phase/{phaseId}/team/{teamId}/appeal")
     @Require(value = TEAM_LEADER, window = Require.Window.PUBLICITY)
     public ResponseEntity<Result<UploadVO>> uploadAppeal(@Valid @RequestBody UploadDTO dto, Context ctx) {

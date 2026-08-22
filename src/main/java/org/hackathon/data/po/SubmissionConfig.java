@@ -5,12 +5,12 @@ import lombok.Data;
 @Data
 public class SubmissionConfig {
     private Boolean repository = false;
-    private Boolean OpenSource = false;
+    private Boolean openSource = false;
     private String licenseType;
     private Boolean zip = false;
     private Integer maxSizeMB;
     private Boolean video = false;
-    private Integer maxMinute;
+    private Integer videoMaxSizeMB;
     private Boolean powerpoint = false;
     private Boolean website = false;
     private Boolean markdown = false;
