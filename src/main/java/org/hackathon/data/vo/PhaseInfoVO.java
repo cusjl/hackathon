@@ -16,6 +16,10 @@ public class PhaseInfoVO {
     private Boolean blindReview;
     private Boolean midCheck;
     private Boolean poll;
+    private LocalDateTime pollBeg;
+    private LocalDateTime pollEnd;
+    //每日票数上限，未配置时为 null，后端按每人每天 3 票执行
+    private Integer pollDailyCap;
     private SubmissionConfig submissionConfig;
     private Integer trackId;
     private String trackName;

@@ -127,10 +127,11 @@ public class TrackService {
                 throw new BusinessException(ResultCode.PHASE_TIME_CONFLICT);
             }
         }
+        PhaseService.verifyPollConfig(dto.getPoll(), dto.getPollBeg(), dto.getPollEnd(), dto.getPollDailyCap());
         Phase phase = new Phase(null, trackId, dto.getName(), dto.getSubmitBeg(), dto.getSubmitEnd(),
                 dto.getReviewBeg(), dto.getReviewEnd(), dto.getBlindReview(), dto.getMidCheck(), dto.getManualPick(),
                 dto.getPassRate() == null ? BigDecimal.ONE : dto.getPassRate(), dto.getPoll(),
-                null, null, null, null,
+                dto.getPollBeg(), dto.getPollEnd(), dto.getPollDailyCap(), null,
                 new SubmissionConfig(), 1, LocalDateTime.now(), LocalDateTime.now()
         );
         phaseMapper.insert(phase);

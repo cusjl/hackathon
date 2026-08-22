@@ -86,6 +86,7 @@ public enum ResultCode {
     PHASE_ALREADY_EXIST(3025, HttpStatus.CONFLICT, "轮次已存在"),
     BINDING_PHASE(3026, HttpStatus.CONFLICT, "存在关联轮次"),
     PHASE_ALREADY_SUBMIT(3027, HttpStatus.CONFLICT, "轮次已开始提交"),
+    INVALID_VOTE_TIME(3028, HttpStatus.CONFLICT, "投票起止时间非法"),
     //31XX  报名及组队
     //310X   报名
     NOT_REGISTER_TIME(3101, HttpStatus.FORBIDDEN, "赛事未开放报名"),
@@ -112,6 +113,11 @@ public enum ResultCode {
     SUBMISSION_VERSION_NOT_FOUND(3304, HttpStatus.NOT_FOUND, "作品历史版本不存在"),
     LICENSE_NOT_ALLOWED(3305, HttpStatus.CONFLICT, "开源许可协议不符合要求"),
     SUBMISSION_FILE_MISMATCH(3306, HttpStatus.BAD_REQUEST, "文件不属于本队本轮作品"),
+
+    //34XX  大众投票
+    POLL_NOT_ENABLED(3401, HttpStatus.CONFLICT, "本轮未开启大众投票"),
+    VOTE_REPEAT(3402, HttpStatus.CONFLICT, "已投过该作品，不能重复投票"),
+    VOTE_DAILY_LIMIT(3403, HttpStatus.FORBIDDEN, "今日票数已达上限"),
 
     //6XXX 文件相关
     FILE_NOT_FOUND(6001, HttpStatus.NOT_FOUND, "文件不存在"),

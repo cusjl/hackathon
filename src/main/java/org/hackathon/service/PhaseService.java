@@ -33,6 +33,17 @@ public class PhaseService {
         }
     }
 
+    /**
+     * 开启大众投票时投票窗口必填且起止有序。创建与修改轮次共用。
+     */
+    public static void verifyPollConfig(Boolean poll, LocalDateTime pollBeg,
+                                        LocalDateTime pollEnd, Integer pollDailyCap) {
+        if (!Boolean.TRUE.equals(poll)) return;
+        if (pollBeg == null || pollEnd == null || !pollEnd.isAfter(pollBeg)) {
+            throw new BusinessException(ResultCode.INVALID_VOTE_TIME);
+        }
+    }
+
     public PhaseInfoVO getPhase(Context ctx) {
         PhaseInfoVO vo = new PhaseInfoVO();
         BeanUtils.copyProperties(ctx.phase(), vo);
@@ -49,6 +60,7 @@ public class PhaseService {
             throw new BusinessException(ResultCode.RESOURCE_UPDATED);
         }
         verifyPhaseTime(dto.getSubmitBeg(), dto.getSubmitEnd(), dto.getReviewBeg(), dto.getReviewEnd());
+        PhaseService.verifyPollConfig(dto.getPoll(), dto.getPollBeg(), dto.getPollEnd(), dto.getPollDailyCap());
         Event event = ctx.event();
         if (event.getLiveEnd().isBefore(LocalDateTime.now())) {
             throw new BusinessException(ResultCode.EVENT_ALREADY_END);
