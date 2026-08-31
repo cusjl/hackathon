@@ -32,7 +32,8 @@ storage:
     pending-expire-hours: ${S3_PENDING_EXPIRE_HOURS:24}
     deleted-retain-hours: ${S3_DELETED_RETAIN_HOURS:168}
 hackathon:
-  frontend-url:
-  register-path:
-  redirect-path:
+  frontend-url: ${HACKATHON_FRONTEND_URL:http://localhost:5180}
+  register-path: /onboarding
+  redirect-path: /auth/callback
+  callback-url: ${HACKATHON_CALLBACK_URL:http://localhost:8080/auth/sdu-pass-jwt}
   team-capacity: 5

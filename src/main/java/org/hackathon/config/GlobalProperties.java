@@ -7,6 +7,7 @@ public record GlobalProperties(
         Integer teamCapacity,
         String frontendUrl,
         String registerPath,
-        String redirectPath
+        String redirectPath,
+        String callbackUrl
 ) {
 }

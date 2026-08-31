@@ -19,14 +19,20 @@ import org.hackathon.service.AuthService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
+
+    private static final String SDU_PASS_LOGIN_PAGE =
+            "https://i.sdu.edu.cn/pass-api/login/page";
 
     private final SduPassClient sduPassClient;
     private final SduPassJwtUtils sduPassJwtUtils;
@@ -48,34 +54,74 @@ public class AuthController {
     }
 
     /**
+     * 跳转到 SDU Pass 统一认证登录页。
+     * SDU Pass 登录成功后会携带 code 回调到 callbackUrl。
+     */
+    @GetMapping("/sdu-pass/login")
+    public ResponseEntity<Void> startSduPassLogin() {
+        try {
+            String encodedCallback = URLEncoder.encode(globalProperties.callbackUrl(), StandardCharsets.UTF_8);
+            URI loginUrl = URI.create(SDU_PASS_LOGIN_PAGE + "?forward=" + encodedCallback);
+            return redirect(loginUrl);
+        } catch (Exception e) {
+            log.warn("构造 SDU Pass 登录跳转地址失败", e);
+            return redirectToFrontendError(errorMessage(e));
+        }
+    }
+
+    /**
      * SduPass回调接口
      * @param code SDU统一认证登录返回的code
      * @return 携带短时(5min)token重定向至前端首页或注册页面
      */
     @GetMapping("/sdu-pass-jwt")
-    public ResponseEntity<?> sduPassLogin(@RequestParam String code) {
-        String sduPassJwt = sduPassClient.getToken(code).token();
-        SduPassJwtPayload payload =
-                sduPassJwtUtils.parseSduPassJwt(sduPassJwt);
-        //在已注册用户中查找对应学生
-        Integer id = authService.examineStudent(payload.casID());
-        String url = globalProperties.frontendUrl();
-        if (id == null) {
-            String token = localJwtUtils.generateToken(
-                    new LocalJwt(null, payload.name(), true, payload.casID()), LocalJwt.Type.REGISTER
-            );
-            url += globalProperties.registerPath() + "?token=" + token;
-        } else {
+    public ResponseEntity<Void> sduPassLogin(@RequestParam(required = false) String code) {
+        try {
+            if (code == null || code.isBlank()) {
+                return redirectToFrontendError("缺少授权码");
+            }
+            String sduPassJwt = sduPassClient.getToken(code).token();
+            SduPassJwtPayload payload =
+                    sduPassJwtUtils.parseSduPassJwt(sduPassJwt);
+            //在已注册用户中查找对应学生
+            Integer id = authService.examineStudent(payload.casID());
+            if (id == null) {
+                String token = localJwtUtils.generateToken(
+                        new LocalJwt(null, payload.name(), true, payload.casID()), LocalJwt.Type.REGISTER
+                );
+                return redirectToFrontend(globalProperties.registerPath(), "token", token);
+            }
             String token = localJwtUtils.generateToken(
                     new LocalJwt(id, payload.name(), true, payload.casID()), LocalJwt.Type.EXCHANGE
             );
-            url += globalProperties.redirectPath() + "?token=" + token;
+            return redirectToFrontend(globalProperties.redirectPath(), "token", token);
+        } catch (Exception e) {
+            log.warn("SDU Pass 登录回调处理失败", e);
+            return redirectToFrontendError(errorMessage(e));
         }
+    }
 
-        return ResponseEntity
-                .status(HttpStatus.FOUND)
-                .location(URI.create(url))
-                .build();
+    private ResponseEntity<Void> redirectToFrontend(String path, String parameter, String value) {
+        URI uri = UriComponentsBuilder.fromUriString(globalProperties.frontendUrl())
+                .path(path)
+                .queryParam(parameter, value)
+                .build()
+                .encode()
+                .toUri();
+        return redirect(uri);
+    }
+
+    private ResponseEntity<Void> redirectToFrontendError(String message) {
+        return redirectToFrontend("", "error", message);
+    }
+
+    private ResponseEntity<Void> redirect(URI location) {
+        return ResponseEntity.status(HttpStatus.FOUND).location(location).build();
+    }
+
+    private String errorMessage(Exception e) {
+        return e.getMessage() == null || e.getMessage().isBlank()
+                ? "统一认证登录失败" : e.getMessage();
     }
 
     /**
