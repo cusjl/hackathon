@@ -106,11 +106,13 @@ public class EventService {
         event.setLiveBeg(dto.getLiveBeg());
         event.setLiveEnd(dto.getLiveEnd());
         List<Integer> trackIds = getTrackIds(event.getEventId());
-        LambdaUpdateWrapper<Phase> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.in(Phase::getTrackId, trackIds).and(w ->
-                w.lt(Phase::getSubmitBeg, event.getLiveBeg()).or().gt(Phase::getReviewEnd, event.getLiveEnd()));
-        if (phaseMapper.selectCount(wrapper) > 0) {
-            throw new BusinessException(ResultCode.PHASE_EVENT_TIME_CONFLICT);
+        if (!trackIds.isEmpty()) {
+            LambdaUpdateWrapper<Phase> wrapper = new LambdaUpdateWrapper<>();
+            wrapper.in(Phase::getTrackId, trackIds).and(w ->
+                    w.lt(Phase::getSubmitBeg, event.getLiveBeg()).or().gt(Phase::getReviewEnd, event.getLiveEnd()));
+            if (phaseMapper.selectCount(wrapper) > 0) {
+                throw new BusinessException(ResultCode.PHASE_EVENT_TIME_CONFLICT);
+            }
         }
         event.setName(dto.getName());
         event.setIntroduction(dto.getIntroduction());
