@@ -3,10 +3,10 @@
   "baseUrl": "http://127.0.0.1:18089",
   "database": "独立 MySQL 8.4 数据库（名称记录于执行环境，不含凭据）",
   "migration": "Flyway V1–V9 从空库完整执行",
-  "startedAt": "2026-09-01T18:38:42+08:00",
-  "finishedAt": "2026-09-01T18:38:44+08:00",
-  "total": 72,
-  "passed": 72,
+  "startedAt": "2026-09-01T22:20:03+08:00",
+  "finishedAt": "2026-09-01T22:20:05+08:00",
+  "total": 75,
+  "passed": 75,
   "failed": 0,
   "results": [
     {
@@ -16,7 +16,7 @@
       "path": "/auth/test",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 311.9,
+      "durationMs": 300.4,
       "passed": true,
       "message": "生成成功"
     },
@@ -27,7 +27,7 @@
       "path": "/auth/exchange?token=%3Credacted%3E",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 40.6,
+      "durationMs": 39.9,
       "passed": true,
       "message": "兑换成功"
     },
@@ -38,7 +38,7 @@
       "path": "/auth/test",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 5.5,
+      "durationMs": 6.1,
       "passed": true,
       "message": "生成成功"
     },
@@ -49,7 +49,7 @@
       "path": "/auth/exchange?token=%3Credacted%3E",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 4.4,
+      "durationMs": 4.2,
       "passed": true,
       "message": "兑换成功"
     },
@@ -60,7 +60,7 @@
       "path": "/auth/test",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 4.1,
+      "durationMs": 5.2,
       "passed": true,
       "message": "生成成功"
     },
@@ -71,7 +71,7 @@
       "path": "/auth/exchange?token=%3Credacted%3E",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 4.3,
+      "durationMs": 5.3,
       "passed": true,
       "message": "兑换成功"
     },
@@ -82,7 +82,7 @@
       "path": "/auth/test",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 5.0,
+      "durationMs": 4.7,
       "passed": true,
       "message": "生成成功"
     },
@@ -93,7 +93,7 @@
       "path": "/auth/exchange?token=%3Credacted%3E",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 4.3,
+      "durationMs": 5.0,
       "passed": true,
       "message": "兑换成功"
     },
@@ -104,7 +104,7 @@
       "path": "/auth/test",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 4.8,
+      "durationMs": 5.0,
       "passed": true,
       "message": "生成成功"
     },
@@ -115,7 +115,7 @@
       "path": "/auth/exchange?token=%3Credacted%3E",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 4.6,
+      "durationMs": 5.1,
       "passed": true,
       "message": "兑换成功"
     },
@@ -126,7 +126,7 @@
       "path": "/auth/test",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 4.5,
+      "durationMs": 5.0,
       "passed": true,
       "message": "生成成功"
     },
@@ -137,7 +137,7 @@
       "path": "/auth/exchange?token=%3Credacted%3E",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 3.8,
+      "durationMs": 4.6,
       "passed": true,
       "message": "兑换成功"
     },
@@ -148,7 +148,7 @@
       "path": "/auth/test",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 3.8,
+      "durationMs": 5.8,
       "passed": true,
       "message": "生成成功"
     },
@@ -159,7 +159,7 @@
       "path": "/auth/exchange?token=%3Credacted%3E",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 11.8,
+      "durationMs": 12.6,
       "passed": true,
       "message": "兑换成功"
     },
@@ -170,7 +170,7 @@
       "path": "/team/invitations",
       "expected": "HTTP 401 / code 1004",
       "actual": "HTTP 401 / code 1004",
-      "durationMs": 4.6,
+      "durationMs": 5.3,
       "passed": true,
       "message": "未携带token"
     },
@@ -181,7 +181,7 @@
       "path": "/event/1/team-config",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 26.4,
+      "durationMs": 33.3,
       "passed": true,
       "message": "成功"
     },
@@ -192,7 +192,7 @@
       "path": "/event/1/team-config",
       "expected": "HTTP 403 / code 1011",
       "actual": "HTTP 403 / code 1011",
-      "durationMs": 6.8,
+      "durationMs": 7.0,
       "passed": true,
       "message": "用户无管理员权限"
     },
@@ -203,7 +203,7 @@
       "path": "/event/1",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 10.8,
+      "durationMs": 13.0,
       "passed": true,
       "message": "获取成功"
     },
@@ -214,7 +214,7 @@
       "path": "/team/1",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 33.3,
+      "durationMs": 39.7,
       "passed": true,
       "message": "创建成功"
     },
@@ -225,7 +225,7 @@
       "path": "/team/1",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 12.2,
+      "durationMs": 20.6,
       "passed": true,
       "message": "创建成功"
     },
@@ -236,7 +236,29 @@
       "path": "/team/1",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 14.8,
+      "durationMs": 17.4,
+      "passed": true,
+      "message": "获取成功"
+    },
+    {
+      "group": "队伍名称检索",
+      "name": "未组队选手按队名模糊检索可加入队伍",
+      "method": "POST",
+      "path": "/team/events/1/list?page=1&size=20",
+      "expected": "HTTP 200 / code 200",
+      "actual": "HTTP 200 / code 200",
+      "durationMs": 119.6,
+      "passed": true,
+      "message": "获取成功"
+    },
+    {
+      "group": "队伍名称检索",
+      "name": "不同赛道选手检索不到该队伍",
+      "method": "POST",
+      "path": "/team/events/1/list?page=1&size=20",
+      "expected": "HTTP 200 / code 200",
+      "actual": "HTTP 200 / code 200",
+      "durationMs": 15.4,
       "passed": true,
       "message": "获取成功"
     },
@@ -247,7 +269,7 @@
       "path": "/team/1/join",
       "expected": "HTTP 409 / code 3118",
       "actual": "HTTP 409 / code 3118",
-      "durationMs": 8.9,
+      "durationMs": 10.4,
       "passed": true,
       "message": "报名赛道与队伍赛道不一致"
     },
@@ -258,7 +280,7 @@
       "path": "/team/events/1/recommendation",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 17.8,
+      "durationMs": 24.4,
       "passed": true,
       "message": "自荐已发布"
     },
@@ -269,7 +291,7 @@
       "path": "/team/events/1/recommendations/list?page=1&size=20",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 75.7,
+      "durationMs": 30.3,
       "passed": true,
       "message": "获取成功"
     },
@@ -280,7 +302,7 @@
       "path": "/team/1/invite",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 18.7,
+      "durationMs": 26.6,
       "passed": true,
       "message": "邀请已发送"
     },
@@ -291,7 +313,7 @@
       "path": "/team/1/invite",
       "expected": "HTTP 409 / code 4001",
       "actual": "HTTP 409 / code 4001",
-      "durationMs": 10.7,
+      "durationMs": 16.5,
       "passed": true,
       "message": "该用户已有待处理邀请"
     },
@@ -302,7 +324,7 @@
       "path": "/team/1/invitations/1/accept",
       "expected": "HTTP 404 / code 3126",
       "actual": "HTTP 404 / code 3126",
-      "durationMs": 7.3,
+      "durationMs": 9.1,
       "passed": true,
       "message": "组队邀请不存在"
     },
@@ -313,7 +335,7 @@
       "path": "/team/invitations",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 15.1,
+      "durationMs": 18.4,
       "passed": true,
       "message": "获取成功"
     },
@@ -324,7 +346,7 @@
       "path": "/team/1/invitations/1/reject",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 9.3,
+      "durationMs": 14.9,
       "passed": true,
       "message": "成功"
     },
@@ -335,7 +357,7 @@
       "path": "/team/1/invite",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 12.6,
+      "durationMs": 18.3,
       "passed": true,
       "message": "邀请已发送"
     },
@@ -346,7 +368,7 @@
       "path": "/team/1/recruitments",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 12.1,
+      "durationMs": 16.1,
       "passed": true,
       "message": "发布成功"
     },
@@ -357,7 +379,7 @@
       "path": "/team/1/recruitments",
       "expected": "HTTP 409 / code 3123",
       "actual": "HTTP 409 / code 3123",
-      "durationMs": 6.1,
+      "durationMs": 8.4,
       "passed": true,
       "message": "招募人数超过队伍剩余名额"
     },
@@ -368,7 +390,7 @@
       "path": "/team/events/1/recruitments/list?page=1&size=20",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 20.8,
+      "durationMs": 21.7,
       "passed": true,
       "message": "获取成功"
     },
@@ -379,7 +401,7 @@
       "path": "/team/recruitments/1/applications",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 13.3,
+      "durationMs": 17.2,
       "passed": true,
       "message": "申请已提交"
     },
@@ -390,7 +412,7 @@
       "path": "/team/1/applications",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 8.1,
+      "durationMs": 9.5,
       "passed": true,
       "message": "获取成功"
     },
@@ -401,7 +423,7 @@
       "path": "/team/1/applications/1/accept",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 21.2,
+      "durationMs": 24.6,
       "passed": true,
       "message": "成功"
     },
@@ -412,7 +434,7 @@
       "path": "/team/1/applications/1/accept",
       "expected": "HTTP 409 / code 3125",
       "actual": "HTTP 409 / code 3125",
-      "durationMs": 5.4,
+      "durationMs": 5.9,
       "passed": true,
       "message": "入队申请已处理"
     },
@@ -423,7 +445,7 @@
       "path": "/notification?page=1&size=20",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 13.6,
+      "durationMs": 13.1,
       "passed": true,
       "message": "获取成功"
     },
@@ -434,7 +456,7 @@
       "path": "/team/1/invitations/1/accept",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 21.9,
+      "durationMs": 23.6,
       "passed": true,
       "message": "成功"
     },
@@ -456,7 +478,7 @@
       "path": "/team/join-code",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 32.6,
+      "durationMs": 28.6,
       "passed": true,
       "message": "成功"
     },
@@ -467,7 +489,18 @@
       "path": "/team/1",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 11.5,
+      "durationMs": 10.0,
+      "passed": true,
+      "message": "获取成功"
+    },
+    {
+      "group": "队伍名称检索",
+      "name": "满员队伍不再出现在可加入队伍检索中",
+      "method": "POST",
+      "path": "/team/events/1/list?page=1&size=20",
+      "expected": "HTTP 200 / code 200",
+      "actual": "HTTP 200 / code 200",
+      "durationMs": 12.6,
       "passed": true,
       "message": "获取成功"
     },
@@ -478,7 +511,7 @@
       "path": "/team/1/leader/transfer",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 15.4,
+      "durationMs": 18.4,
       "passed": true,
       "message": "成功"
     },
@@ -489,7 +522,7 @@
       "path": "/team/1",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 9.2,
+      "durationMs": 14.3,
       "passed": true,
       "message": "获取成功"
     },
@@ -500,7 +533,7 @@
       "path": "/team/1/leader/transfer",
       "expected": "HTTP 403 / code 1013",
       "actual": "HTTP 403 / code 1013",
-      "durationMs": 3.4,
+      "durationMs": 5.7,
       "passed": true,
       "message": "选手无队长权限"
     },
@@ -511,7 +544,7 @@
       "path": "/team/1/leader/transfer",
       "expected": "HTTP 409 / code 3117",
       "actual": "HTTP 409 / code 3117",
-      "durationMs": 7.0,
+      "durationMs": 8.4,
       "passed": true,
       "message": "选手不在队伍中"
     },
@@ -522,7 +555,7 @@
       "path": "/notification?page=1&size=20",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 6.9,
+      "durationMs": 8.0,
       "passed": true,
       "message": "获取成功"
     },
@@ -533,7 +566,7 @@
       "path": "/team/1/leader/transfer",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 13.1,
+      "durationMs": 18.8,
       "passed": true,
       "message": "成功"
     },
@@ -544,7 +577,7 @@
       "path": "/team/events/1/recruitments/list?page=1&size=20",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 6.3,
+      "durationMs": 10.4,
       "passed": true,
       "message": "获取成功"
     },
@@ -555,7 +588,7 @@
       "path": "/team/1/invite",
       "expected": "HTTP 409 / code 3115",
       "actual": "HTTP 409 / code 3115",
-      "durationMs": 6.8,
+      "durationMs": 11.5,
       "passed": true,
       "message": "队伍已满员"
     },
@@ -566,7 +599,7 @@
       "path": "/team/2/invite-code",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 7.2,
+      "durationMs": 12.6,
       "passed": true,
       "message": "邀请码已刷新"
     },
@@ -577,7 +610,7 @@
       "path": "/team/join-code",
       "expected": "HTTP 404 / code 3119",
       "actual": "HTTP 404 / code 3119",
-      "durationMs": 5.5,
+      "durationMs": 8.3,
       "passed": true,
       "message": "队伍邀请码无效"
     },
@@ -588,7 +621,7 @@
       "path": "/team/join-code",
       "expected": "HTTP 409 / code 3118",
       "actual": "HTTP 409 / code 3118",
-      "durationMs": 6.9,
+      "durationMs": 14.8,
       "passed": true,
       "message": "报名赛道与队伍赛道不一致"
     },
@@ -599,7 +632,7 @@
       "path": "/team/events/1/recommendation",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 10.2,
+      "durationMs": 114.9,
       "passed": true,
       "message": "自荐已发布"
     },
@@ -610,7 +643,7 @@
       "path": "/team/events/1/recommendation",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 6.8,
+      "durationMs": 35.8,
       "passed": true,
       "message": "成功"
     },
@@ -621,7 +654,7 @@
       "path": "/team/events/1/recommendations/list?page=1&size=20",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 5.7,
+      "durationMs": 8.7,
       "passed": true,
       "message": "获取成功"
     },
@@ -632,7 +665,7 @@
       "path": "/team/2/recruitments",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 8.3,
+      "durationMs": 13.8,
       "passed": true,
       "message": "发布成功"
     },
@@ -643,7 +676,7 @@
       "path": "/team/recruitments/2/applications",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 12.5,
+      "durationMs": 25.5,
       "passed": true,
       "message": "申请已提交"
     },
@@ -654,7 +687,7 @@
       "path": "/team/2/applications/2/reject",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 7.9,
+      "durationMs": 16.3,
       "passed": true,
       "message": "成功"
     },
@@ -665,7 +698,7 @@
       "path": "/notification?page=1&size=20",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 6.8,
+      "durationMs": 9.9,
       "passed": true,
       "message": "获取成功"
     },
@@ -676,7 +709,7 @@
       "path": "/team/events/1/admin/list?page=1&size=20",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 15.0,
+      "durationMs": 24.8,
       "passed": true,
       "message": "获取成功"
     },
@@ -687,7 +720,7 @@
       "path": "/team/events/1/admin/list?page=1&size=20",
       "expected": "HTTP 403 / code 1011",
       "actual": "HTTP 403 / code 1011",
-      "durationMs": 4.8,
+      "durationMs": 9.7,
       "passed": true,
       "message": "用户无管理员权限"
     },
@@ -698,7 +731,7 @@
       "path": "/team/2/members",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 15.6,
+      "durationMs": 30.2,
       "passed": true,
       "message": "成功"
     },
@@ -709,7 +742,7 @@
       "path": "/team/2/leader",
       "expected": "HTTP 409 / code 3117",
       "actual": "HTTP 409 / code 3117",
-      "durationMs": 7.3,
+      "durationMs": 15.5,
       "passed": true,
       "message": "选手不在队伍中"
     },
@@ -720,7 +753,7 @@
       "path": "/team/2/leader",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 15.0,
+      "durationMs": 30.9,
       "passed": true,
       "message": "成功"
     },
@@ -731,7 +764,7 @@
       "path": "/team/2",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 7.5,
+      "durationMs": 18.2,
       "passed": true,
       "message": "获取成功"
     },
@@ -742,7 +775,7 @@
       "path": "/team/2/leader",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 16.3,
+      "durationMs": 25.1,
       "passed": true,
       "message": "成功"
     },
@@ -753,7 +786,7 @@
       "path": "/team/2/kick",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 19.1,
+      "durationMs": 15.8,
       "passed": true,
       "message": "成功"
     },
@@ -764,7 +797,7 @@
       "path": "/team/2",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 11.4,
+      "durationMs": 12.0,
       "passed": true,
       "message": "获取成功"
     },
@@ -775,7 +808,7 @@
       "path": "/team/2",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 18.6,
+      "durationMs": 18.5,
       "passed": true,
       "message": "成功"
     },
@@ -786,7 +819,7 @@
       "path": "/team/2",
       "expected": "HTTP 200 / code 200",
       "actual": "HTTP 200 / code 200",
-      "durationMs": 16.3,
+      "durationMs": 17.0,
       "passed": true,
       "message": "成功"
     },
@@ -797,7 +830,7 @@
       "path": "/team/2",
       "expected": "HTTP 404 / code 3113",
       "actual": "HTTP 404 / code 3113",
-      "durationMs": 3.8,
+      "durationMs": 3.5,
       "passed": true,
       "message": "队伍不存在"
     }

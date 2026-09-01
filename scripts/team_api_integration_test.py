@@ -134,6 +134,15 @@ def run(base_url: str) -> Runner:
     r.case("基础组队", "队员可查看队伍详情和邀请码", "GET", f"/team/{team1_id}", t[1],
            check=lambda p: p["data"]["size"] == 1 and p["data"]["inviteCode"] == team1_code)
 
+    r.case("队伍名称检索", "未组队选手按队名模糊检索可加入队伍", "POST",
+           "/team/events/1/list?page=1&size=20", t[3], {"name": "星火"},
+           check=lambda p: any(x["teamId"] == team1_id and x["maxSize"] == 4
+                               for x in p["data"]["records"])
+           and all(x["teamId"] != team2_id for x in p["data"]["records"]))
+    r.case("队伍名称检索", "不同赛道选手检索不到该队伍", "POST",
+           "/team/events/1/list?page=1&size=20", t[5], {"name": "星火"},
+           check=lambda p: not p["data"]["records"])
+
     r.case("一致性防线", "不同赛道报名者不能通过teamId入队", "POST",
            f"/team/{team1_id}/join", t[5], status=409, code=3118)
 
@@ -199,6 +208,9 @@ def run(base_url: str) -> Runner:
            {"code": team1_code})
     r.case("容量闭环", "队伍达到赛事上限4人", "GET", f"/team/{team1_id}", t[1],
            check=lambda p: p["data"]["size"] == 4)
+    r.case("队伍名称检索", "满员队伍不再出现在可加入队伍检索中", "POST",
+           "/team/events/1/list?page=1&size=20", t[7], {"name": "星火"},
+           check=lambda p: not p["data"]["records"])
     r.case("队长转让", "当前队长把职责转让给本队成员", "POST",
            f"/team/{team1_id}/leader/transfer", t[1], {"userId": 2})
     r.case("队长转让", "队伍详情只标记一名新队长", "GET", f"/team/{team1_id}", t[2],

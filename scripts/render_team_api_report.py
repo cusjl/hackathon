@@ -34,13 +34,14 @@ def main() -> None:
         ("人数上下限", "已实现", "赛事级 1–100 配置；上限控制入队，下限控制首次作品提交"),
         ("管理员干预", "已实现", "检索、人工加人/移人、修改队伍、解散队伍"),
         ("队长变更", "已实现", "队长可转让给本队成员；赛管可设置本队成员为队长；始终保持单队长"),
+        ("按队名查找可加入队伍", "已实现", "选手按名称模糊检索；自动限制同赛事赛道、有效状态和未满员队伍"),
     ]
     evidence = [
         ("数据库", "V9__team_recruitment.sql", "赛事人数配置、邀请码、招募、申请、邀请、自荐及索引/外键"),
         ("业务服务", "TeamService.java", "组队状态流、事务、乐观锁、容量和赛道校验、通知闭环"),
-        ("HTTP 接口", "TeamController.java / EventController.java", "28 个组队相关映射及角色控制"),
+        ("HTTP 接口", "TeamController.java / EventController.java", "组队相关映射及角色控制"),
         ("提交约束", "SubmissionService.java", "首次提交前检查赛事最小组队人数"),
-        ("API 契约", "docs/openapi.yaml", "114 个 operationId、195 个本地引用均通过解析"),
+        ("API 契约", "docs/openapi.yaml", "117 个 operationId 及本地引用均通过解析"),
         ("可复用验收", "scripts/team_api_integration_test.py", "仅通过 HTTP 操作业务，输出结构化 JSON 结果"),
     ]
 

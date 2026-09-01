@@ -951,6 +951,24 @@ paths:
       responses:
         '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/TeamPageResult'}}}}
         default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/events/{eventId}/list:
+    post:
+      tags: [队伍]
+      operationId: listJoinableTeamsByName
+      summary: 选手按队名分页检索可加入队伍
+      description: 仅返回与当前选手报名赛道一致、状态有效且尚未满员的队伍；实际入队时仍会校验专业和校区限制。
+      security: [{bearerAuth: []}]
+      x-required-roles: [STUDENT]
+      parameters:
+        - {$ref: '#/components/parameters/EventId'}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/QueryJoinableTeamDTO'}}}
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/TeamPageResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
 
   /submission/phase/{phaseId}/team/{teamId}:
     parameters:
@@ -1817,6 +1835,11 @@ components:
         trackId: {type: integer, format: int32}
         name: {type: string}
         status: {$ref: '#/components/schemas/TeamStatus'}
+    QueryJoinableTeamDTO:
+      type: object
+      required: [name]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 100, description: 队伍名称包含匹配}
     SubmitWorkDTO:
       type: object
       description: 字段是否必填由轮次 submissionConfig 动态决定。
@@ -2213,6 +2236,7 @@ components:
         leaderId: {type: integer, format: int32}
         leaderName: {type: string}
         size: {type: integer}
+        maxSize: {type: integer, description: 赛事配置的队伍人数上限}
         type: {$ref: '#/components/schemas/TeamType'}
         status: {$ref: '#/components/schemas/TeamStatus'}
         updateTime: {$ref: '#/components/schemas/LocalDateTime'}

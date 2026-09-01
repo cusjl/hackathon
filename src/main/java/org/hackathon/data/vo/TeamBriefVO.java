@@ -15,6 +15,7 @@ public class TeamBriefVO {
     private Integer leaderId;
     private String leaderName;
     private Integer size;
+    private Integer maxSize;
     private TeamEnum type;
     private TeamStatus status;
     private LocalDateTime updateTime;

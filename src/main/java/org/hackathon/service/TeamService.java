@@ -573,6 +573,26 @@ public class TeamService {
                 .convert(this::teamBriefVO);
     }
 
+    public IPage<TeamBriefVO> joinableTeamPage(Integer eventId, QueryJoinableTeamDTO dto,
+                                                PageParamDTO param, Integer userId) {
+        Event event = eventMapper.selectById(eventId);
+        if (event == null) throw new BusinessException(ResultCode.EVENT_NOT_FOUND);
+        requireBeforeLive(event);
+        Registration registration = registration(userId, eventId);
+        if (registration == null) throw new BusinessException(ResultCode.NOT_REGISTERED);
+        if (registration.getTeamId() != null) throw new BusinessException(ResultCode.ALREADY_TEAMED);
+
+        LambdaQueryWrapper<Team> wrapper = new LambdaQueryWrapper<Team>()
+                .eq(Team::getEventId, eventId)
+                .eq(Team::getTrackId, registration.getTrackId())
+                .eq(Team::getStatus, TeamStatus.ACTIVE)
+                .lt(Team::getSize, maxSize(event))
+                .like(Team::getName, dto.getName().trim())
+                .orderByDesc(Team::getUpdateTime);
+        return teamMapper.selectPage(new Page<>(param.getPage(), param.getSize()), wrapper)
+                .convert(this::teamBriefVO);
+    }
+
     private TeamBriefVO teamBriefVO(Team team) {
         TeamBriefVO vo = new TeamBriefVO();
         BeanUtils.copyProperties(team, vo);
@@ -580,6 +600,8 @@ public class TeamService {
         User leader = userMapper.selectById(team.getLeaderId());
         vo.setTrackName(track == null ? null : track.getName());
         vo.setLeaderName(leader == null ? null : leader.getName());
+        Event event = eventMapper.selectById(team.getEventId());
+        vo.setMaxSize(event == null ? null : maxSize(event));
         return vo;
     }
 }

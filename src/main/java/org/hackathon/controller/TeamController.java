@@ -207,6 +207,14 @@ public class TeamController {
         return Result.success(teamService.recruitmentPage(eventId, dto, param), "获取成功");
     }
 
+    @PostMapping("/events/{eventId}/list")
+    @Require(STUDENT)
+    public ResponseEntity<Result<IPage<TeamBriefVO>>> joinableTeamList(
+            @PathVariable Integer eventId, @Valid PageParamDTO param,
+            @RequestBody @Valid QueryJoinableTeamDTO dto, Context ctx) {
+        return Result.success(teamService.joinableTeamPage(eventId, dto, param, ctx.userId()), "获取成功");
+    }
+
     @PostMapping("/recruitments/{recruitmentId}/applications")
     @Require(STUDENT)
     public ResponseEntity<Result<Integer>> apply(
