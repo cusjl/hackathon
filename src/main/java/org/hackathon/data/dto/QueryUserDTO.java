@@ -11,6 +11,8 @@ public class QueryUserDTO {
     Integer userId;
     //包含匹配
     String name;
+    //包含匹配（姓名查询的前端字段别名）
+    String userName;
     //前缀匹配
     @Size(max = 11, message = "手机号不能超过11位")
     String phone;

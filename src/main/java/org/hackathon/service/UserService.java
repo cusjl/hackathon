@@ -161,9 +161,10 @@ public class UserService {
 
     public IPage<UserBriefVO> getUserPage(QueryUserDTO dto, PageParamDTO param) {
         if (dto.getOnlySuper() && dto.getOnlyExtern()) return new Page<>(param.getPage(), param.getSize());
+        String userName = StringUtils.hasText(dto.getUserName()) ? dto.getUserName() : dto.getName();
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()
                 .eq(dto.getUserId() != null, User::getUserId, dto.getUserId())
-                .like(StringUtils.hasText(dto.getName()), User::getName, dto.getName())
+                .like(StringUtils.hasText(userName), User::getName, userName)
                 .likeRight(StringUtils.hasText(dto.getPhone()), User::getPhone, dto.getPhone())
                 .likeRight(StringUtils.hasText(dto.getEmail()), User::getEmail, dto.getEmail())
                 .eq(dto.getOnlyStudent(), User::getStudentFlag, true)
