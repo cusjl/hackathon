@@ -96,6 +96,19 @@ public class TeamController {
         return Result.success(teamService.invite(ctx, dto.getUserId()), "邀请已发送");
     }
 
+    /**
+     * 队长按姓名查询当前队伍可邀请的学生
+     * @param param 分页参数
+     * @param dto 姓名查询参数
+     * @return 可邀请学生分页列表
+     */
+    @PostMapping("/{teamId}/invite-candidates/list")
+    @Require({TEAM_LEADER, EVENT_ADMIN})
+    public ResponseEntity<Result<IPage<InviteCandidateVO>>> inviteCandidates(
+            @Valid PageParamDTO param, @RequestBody @Valid QueryInviteCandidateDTO dto, Context ctx) {
+        return Result.success(teamService.inviteCandidatePage(dto, param, ctx), "获取成功");
+    }
+
     @PostMapping("/{teamId}/members")
     @Require(EVENT_ADMIN)
     public ResponseEntity<Result<Void>> addMember(
