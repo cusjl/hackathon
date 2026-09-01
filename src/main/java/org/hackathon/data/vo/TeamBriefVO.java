@@ -2,21 +2,20 @@ package org.hackathon.data.vo;
 
 import lombok.Data;
 import org.hackathon.data.enums.TeamEnum;
+import org.hackathon.data.enums.TeamStatus;
 
-import java.util.List;
+import java.time.LocalDateTime;
 
 @Data
-public class TeamInfoVO {
+public class TeamBriefVO {
     private Integer teamId;
     private String name;
-    private Integer eventId;
-    private String eventName;
     private Integer trackId;
     private String trackName;
+    private Integer leaderId;
+    private String leaderName;
     private Integer size;
-    private String introduction;
     private TeamEnum type;
-    private String inviteCode;
-    private Integer version;
-    private List<TeamMemberVO> members;
+    private TeamStatus status;
+    private LocalDateTime updateTime;
 }

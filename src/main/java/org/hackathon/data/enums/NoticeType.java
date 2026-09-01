@@ -14,6 +14,10 @@ public enum NoticeType {
     REVIEW_URGE(2, "打分催办"),
     DEMO_FLAG(3, "作品异常与补交"),
     SUPPLEMENT_CLOSED(4, "补交窗口关闭"),
+    TEAM_INVITATION(5, "组队邀请"),
+    TEAM_APPLICATION(6, "入队申请"),
+    TEAM_APPLICATION_RESULT(7, "入队申请结果"),
+    TEAM_LEADER_CHANGED(8, "队长变更"),
     ;
     @EnumValue
     private final Integer value;

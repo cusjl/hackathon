@@ -24,6 +24,8 @@ public class Event {
     private String introduction;
     private String tags;
     private String notice;
+    private Integer teamMinSize;
+    private Integer teamMaxSize;
     @Version
     private Integer version;
     private LocalDateTime createTime;

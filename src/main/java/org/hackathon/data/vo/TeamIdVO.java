@@ -9,4 +9,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class TeamIdVO {
     private Integer teamId;
+    private String inviteCode;
 }

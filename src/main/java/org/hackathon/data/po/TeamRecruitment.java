@@ -6,27 +6,21 @@ import com.baomidou.mybatisplus.annotation.Version;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hackathon.data.enums.TeamEnum;
-import org.hackathon.data.enums.TeamStatus;
 
 import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class Team {
+public class TeamRecruitment {
     @TableId(type = IdType.AUTO)
+    private Integer recruitmentId;
     private Integer teamId;
-    private String name;
-    private Integer eventId;
-    private Integer trackId;
-    private Integer leaderId;
-    private Integer size;
-    private String introduction;
-    private TeamEnum type;
-    private TeamStatus status;
-    private Integer currentPhaseId;
-    private String inviteCode;
+    private String title;
+    private String description;
+    private String requiredTags;
+    private Integer vacancies;
+    private Boolean openFlag;
     @Version
     private Integer version;
     private LocalDateTime createTime;

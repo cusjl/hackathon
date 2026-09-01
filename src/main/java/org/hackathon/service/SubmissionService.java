@@ -51,6 +51,9 @@ public class SubmissionService {
     public SubmissionIdVO submit(SubmitWorkDTO dto, Context ctx) {
         Phase phase = ctx.phase();
         Team team = ctx.team();
+        if (ctx.event().getTeamMinSize() != null && team.getSize() < ctx.event().getTeamMinSize()) {
+            throw new BusinessException(ResultCode.TEAM_TOO_SMALL);
+        }
         SubmissionSnapshot snapshot = verify(dto, phase, team);
 
         LocalDateTime now = LocalDateTime.now();

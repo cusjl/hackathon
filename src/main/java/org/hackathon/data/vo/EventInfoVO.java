@@ -18,6 +18,8 @@ public class EventInfoVO {
     private String introduction;
     private String tags;
     private String notice;
+    private Integer teamMinSize;
+    private Integer teamMaxSize;
     private List<TrackBriefVO> tracks;
     private Integer version;
 }

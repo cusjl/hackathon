@@ -49,7 +49,7 @@ public class EventService {
     public Integer createEvent(CreateEventDTO dto) {
         verifyEventTime(dto.getRegBeg(), dto.getRegEnd(), dto.getLiveBeg(), dto.getLiveEnd());
         Event event = new Event(null, dto.getName(), dto.getRegBeg(), dto.getRegEnd(),
-        dto.getLiveBeg(), dto.getLiveEnd(), dto.getIntroduction(), dto.getTags(), "", 1,
+        dto.getLiveBeg(), dto.getLiveEnd(), dto.getIntroduction(), dto.getTags(), "", 1, 5, 1,
                 LocalDateTime.now(), LocalDateTime.now());
         try {
             eventMapper.insert(event);
@@ -120,6 +120,25 @@ public class EventService {
         event.setNotice(dto.getNotice());
         event.setUpdateTime(LocalDateTime.now());
         //乐观锁检查
+        if (eventMapper.updateById(event) == 0) {
+            throw new BusinessException(ResultCode.RESOURCE_UPDATED);
+        }
+    }
+
+    public void updateTeamConfig(UpdateTeamConfigDTO dto, Context ctx) {
+        Event event = ctx.event();
+        if (event.getLiveBeg().isBefore(LocalDateTime.now())) {
+            throw new BusinessException(ResultCode.EVENT_ALREADY_LIVE);
+        }
+        if (dto.getMinSize() > dto.getMaxSize()) {
+            throw new BusinessException(ResultCode.INVALID_TEAM_CAPACITY);
+        }
+        if (!event.getVersion().equals(dto.getVersion())) {
+            throw new BusinessException(ResultCode.RESOURCE_UPDATED);
+        }
+        event.setTeamMinSize(dto.getMinSize());
+        event.setTeamMaxSize(dto.getMaxSize());
+        event.setUpdateTime(LocalDateTime.now());
         if (eventMapper.updateById(event) == 0) {
             throw new BusinessException(ResultCode.RESOURCE_UPDATED);
         }

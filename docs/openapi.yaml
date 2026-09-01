@@ -1,0 +1,2622 @@
+openapi: 3.1.0
+info:
+  title: 山东大学黑客松 API
+  version: 0.0.1
+  description: |
+    根据仓库中的 Spring MVC Controller、DTO/VO、校验注解、鉴权拦截器与业务状态码整理。
+    除 SDU Pass 回调外，业务接口统一返回 `{code, data, msg}`；成功时 `code` 为 200。
+    受保护接口使用访问令牌，服务端同时兼容 `Authorization: Bearer <token>` 与直接传入令牌，本文档按标准 Bearer 方式描述。
+    `x-required-roles` 和 `x-required-window` 是对仓库 `@Require` 约束的补充说明。
+servers:
+  - url: http://localhost:8080
+    description: 本地开发环境
+tags:
+  - {name: 认证, description: SDU Pass、令牌兑换与账号密码登录}
+  - {name: 用户, description: 用户资料、密码与外部账号创建}
+  - {name: 学生, description: 学生注册、标签与资料}
+  - {name: 权限, description: 超管、赛管和评委权限}
+  - {name: 赛事, description: 赛事管理与查询}
+  - {name: 赛道, description: 赛道及其轮次}
+  - {name: 轮次, description: 轮次详情与提交配置}
+  - {name: 报名, description: 学生赛道报名}
+  - {name: 队伍, description: 组队与成员管理}
+  - {name: 人才招募, description: 队伍招募、入队申请、组队邀请与选手自荐}
+  - {name: 作品, description: 作品提交、补交和版本记录}
+  - {name: 评审, description: 评分维度、评委指派、打分与监管}
+  - {name: 文件, description: S3 预签名上传与文件访问}
+  - {name: 投票, description: 大众投票与排行榜}
+  - {name: 通知, description: 站内通知}
+paths:
+  /auth/test:
+    post:
+      tags: [认证]
+      operationId: getTempToken
+      summary: 生成测试临时令牌
+      description: 仅用于测试；根据学号生成 REGISTER 或 EXCHANGE 类型的 5 分钟临时令牌。
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SduPassTestDTO'}}}
+      responses:
+        '200': {description: 生成成功, content: {application/json: {schema: {$ref: '#/components/schemas/StringResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /auth/sdu-pass/login:
+    get:
+      tags: [认证]
+      operationId: startSduPassLogin
+      summary: 发起 SDU Pass 统一认证登录
+      description: 302 到 SDU Pass 登录页。成功后 SDU Pass 将 code 回调到服务端配置的 callbackUrl；构造跳转地址失败时，302 到前端根地址并携带 error 查询参数。
+      responses:
+        '302':
+          description: 重定向至 SDU Pass 登录页，或前端错误页
+          headers:
+            Location: {description: "SDU Pass 登录地址，或 http://localhost:5180?error=错误信息", schema: {type: string, format: uri}}
+  /auth/sdu-pass-jwt:
+    get:
+      tags: [认证]
+      operationId: sduPassLogin
+      summary: SDU Pass 登录回调
+      description: 使用 SDU Pass 返回的 code 换取身份，随后携带短时令牌重定向到前端注册页或首页；缺少 code 或换取/校验失败时，302 到前端根地址并携带 error 查询参数。
+      parameters:
+        - {name: code, in: query, required: false, schema: {type: string}, description: SDU Pass 授权码；缺失时重定向到前端错误页}
+      responses:
+        '302':
+          description: 重定向至前端
+          headers:
+            Location: {description: "前端地址，查询参数为 token（成功）或 error（失败）", schema: {type: string, format: uri}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /auth/exchange:
+    get:
+      tags: [认证]
+      operationId: exchangeToken
+      summary: 兑换短时令牌
+      parameters:
+        - {name: token, in: query, required: true, schema: {type: string, minLength: 1}, description: REGISTER 或 EXCHANGE 类型短时令牌}
+      responses:
+        '200': {description: 兑换成功, content: {application/json: {schema: {$ref: '#/components/schemas/LoginResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /auth/login:
+    post:
+      tags: [认证]
+      operationId: localLogin
+      summary: 账号密码登录
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/LoginDTO'}}}
+      responses:
+        '200': {description: 登录成功, content: {application/json: {schema: {$ref: '#/components/schemas/LoginResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+
+  /user:
+    get:
+      tags: [用户]
+      operationId: getExUser
+      summary: 外部用户自查信息
+      security: [{bearerAuth: []}]
+      x-required-roles: [EXTERN]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/ExUserInfoResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    put:
+      tags: [用户]
+      operationId: updateExUser
+      summary: 修改外部用户信息
+      security: [{bearerAuth: []}]
+      x-required-roles: [EXTERN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UpdateExUserDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /user/{userId}:
+    parameters:
+      - {$ref: '#/components/parameters/UserId'}
+    get:
+      tags: [用户]
+      operationId: getUser
+      summary: 查询用户详情
+      security: [{bearerAuth: []}]
+      x-required-roles: [SELF, SUPER]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/UserInfoResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /user/password:
+    put:
+      tags: [用户]
+      operationId: updatePassword
+      summary: 修改密码
+      security: [{bearerAuth: []}]
+      x-required-roles: [LOGGED_IN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UpdatePasswordDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /user/admin/{eventId}:
+    parameters:
+      - {$ref: '#/components/parameters/EventId'}
+    post:
+      tags: [用户]
+      operationId: createExternalAdmin
+      summary: 创建赛事管理员账号
+      security: [{bearerAuth: []}]
+      x-required-roles: [SUPER]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateExUserDTO'}}}
+      responses:
+        '200': {description: 创建成功, content: {application/json: {schema: {$ref: '#/components/schemas/UserIdResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /user/judge/{eventId}:
+    parameters:
+      - {$ref: '#/components/parameters/EventId'}
+    post:
+      tags: [用户]
+      operationId: createExternalJudge
+      summary: 创建评委账号
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateExUserDTO'}}}
+      responses:
+        '200': {description: 创建成功, content: {application/json: {schema: {$ref: '#/components/schemas/UserIdResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /user/list:
+    post:
+      tags: [用户]
+      operationId: getUserPage
+      summary: 分页查询用户
+      security: [{bearerAuth: []}]
+      x-required-roles: [SUPER]
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/QueryUserDTO'}}}
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/UserPageResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+
+  /student:
+    post:
+      tags: [学生]
+      operationId: createStudent
+      summary: 学生注册
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateStudentDTO'}}}
+      responses:
+        '200': {description: 注册成功, content: {application/json: {schema: {$ref: '#/components/schemas/CreateStudentResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    get:
+      tags: [学生]
+      operationId: getStudent
+      summary: 学生自查信息
+      security: [{bearerAuth: []}]
+      x-required-roles: [STUDENT]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/StudentInfoResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    put:
+      tags: [学生]
+      operationId: updateStudent
+      summary: 更新学生信息
+      security: [{bearerAuth: []}]
+      x-required-roles: [STUDENT]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UpdateStudentDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /student/tags:
+    get:
+      tags: [学生]
+      operationId: getAvailableTags
+      summary: 获取可用学生标签
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/StudentTagsResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+
+  /authority/super:
+    post:
+      tags: [权限]
+      operationId: createSuper
+      summary: 授予超级管理员权限
+      security: [{bearerAuth: []}]
+      x-required-roles: [SUPER]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UserIdDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /authority/super-self:
+    delete:
+      tags: [权限]
+      operationId: deleteSuperSelf
+      summary: 删除自己的超级管理员权限
+      security: [{bearerAuth: []}]
+      x-required-roles: [SUPER]
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /authority/admin/{eventId}:
+    parameters:
+      - {$ref: '#/components/parameters/EventId'}
+    post:
+      tags: [权限]
+      operationId: createAdminAuthority
+      summary: 授予赛事管理员权限
+      security: [{bearerAuth: []}]
+      x-required-roles: [SUPER]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UserIdDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    delete:
+      tags: [权限]
+      operationId: deleteAdminAuthority
+      summary: 删除赛事管理员权限
+      security: [{bearerAuth: []}]
+      x-required-roles: [SUPER]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UserIdDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /authority/admin-self/{eventId}:
+    parameters:
+      - {$ref: '#/components/parameters/EventId'}
+    delete:
+      tags: [权限]
+      operationId: deleteAdminSelf
+      summary: 删除自己的赛事管理员权限
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /authority/judge/{eventId}:
+    parameters:
+      - {$ref: '#/components/parameters/EventId'}
+    post:
+      tags: [权限]
+      operationId: createJudgeAuthority
+      summary: 授予赛事评委权限
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UserIdDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    delete:
+      tags: [权限]
+      operationId: deleteJudgeAuthority
+      summary: 删除赛事评委权限
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UserIdDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /authority/judge-self/{eventId}:
+    parameters:
+      - {$ref: '#/components/parameters/EventId'}
+    delete:
+      tags: [权限]
+      operationId: deleteJudgeSelf
+      summary: 删除自己的赛事评委权限
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_JUDGE]
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /authority/event/{eventId}:
+    parameters:
+      - {$ref: '#/components/parameters/EventId'}
+    get:
+      tags: [权限]
+      operationId: getAuthorityListByEvent
+      summary: 查询赛事相关人员
+      security: [{}, {bearerAuth: []}]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/AuthorityUserListResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /authority/user/{userId}:
+    parameters:
+      - {$ref: '#/components/parameters/UserId'}
+    get:
+      tags: [权限]
+      operationId: getAuthorityListByUser
+      summary: 查询用户所有权限
+      security: [{bearerAuth: []}]
+      x-required-roles: [SUPER]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/AuthorityEventListResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+
+  /event:
+    post:
+      tags: [赛事]
+      operationId: createEvent
+      summary: 创建赛事
+      security: [{bearerAuth: []}]
+      x-required-roles: [SUPER]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateEventDTO'}}}
+      responses:
+        '200': {description: 创建成功, content: {application/json: {schema: {$ref: '#/components/schemas/EventIdResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /event/{eventId}:
+    parameters:
+      - {$ref: '#/components/parameters/EventId'}
+    get:
+      tags: [赛事]
+      operationId: getEvent
+      summary: 获取赛事详情及赛道名录
+      security: [{}, {bearerAuth: []}]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/EventInfoResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    put:
+      tags: [赛事]
+      operationId: updateEvent
+      summary: 更新赛事
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UpdateEventDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    delete:
+      tags: [赛事]
+      operationId: deleteEvent
+      summary: 删除赛事
+      security: [{bearerAuth: []}]
+      x-required-roles: [SUPER]
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /event/{eventId}/track:
+    parameters:
+      - {$ref: '#/components/parameters/EventId'}
+    post:
+      tags: [赛事, 赛道]
+      operationId: createTrack
+      summary: 在赛事下创建赛道
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateTrackDTO'}}}
+      responses:
+        '200': {description: 创建成功, content: {application/json: {schema: {$ref: '#/components/schemas/TrackIdResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /event/list:
+    post:
+      tags: [赛事]
+      operationId: getEventPage
+      summary: 分页查询赛事
+      security: [{}, {bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/QueryEventDTO'}}}
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/EventPageResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+
+  /track/{trackId}:
+    parameters:
+      - {$ref: '#/components/parameters/TrackId'}
+    get:
+      tags: [赛道]
+      operationId: getTrack
+      summary: 获取赛道详情
+      security: [{}, {bearerAuth: []}]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/TrackInfoResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    put:
+      tags: [赛道]
+      operationId: updateTrack
+      summary: 更新赛道
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UpdateTrackDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    delete:
+      tags: [赛道]
+      operationId: deleteTrack
+      summary: 删除赛道
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /track/{trackId}/active:
+    parameters:
+      - {$ref: '#/components/parameters/TrackId'}
+    get:
+      tags: [赛道]
+      operationId: getActivePhase
+      summary: 获取赛道当前进行中的轮次
+      security: [{}, {bearerAuth: []}]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/PhaseActiveResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /track/{trackId}/phase:
+    parameters:
+      - {$ref: '#/components/parameters/TrackId'}
+    post:
+      tags: [赛道, 轮次]
+      operationId: createPhase
+      summary: 在赛道下创建轮次
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreatePhaseDTO'}}}
+      responses:
+        '200': {description: 创建成功, content: {application/json: {schema: {$ref: '#/components/schemas/PhaseIdResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+
+  /phase/{phaseId}:
+    parameters:
+      - {$ref: '#/components/parameters/PhaseId'}
+    get:
+      tags: [轮次]
+      operationId: getPhase
+      summary: 获取轮次详情
+      security: [{}, {bearerAuth: []}]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/PhaseInfoResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    put:
+      tags: [轮次]
+      operationId: updatePhase
+      summary: 更新轮次信息
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UpdatePhaseDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    delete:
+      tags: [轮次]
+      operationId: deletePhase
+      summary: 删除轮次
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /phase/{phaseId}/config:
+    parameters:
+      - {$ref: '#/components/parameters/PhaseId'}
+    put:
+      tags: [轮次]
+      operationId: updatePhaseConfig
+      summary: 更新轮次作品提交配置
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UpdatePhaseConfigDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+
+  /registration/{id}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: integer, format: int32, minimum: 1}, description: POST 时为赛道 ID；GET、PUT、DELETE 时为赛事 ID}
+    post:
+      tags: [报名]
+      operationId: createRegistration
+      summary: 报名赛道
+      security: [{bearerAuth: []}]
+      x-required-roles: [STUDENT]
+      x-required-window: REGISTRATION
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    get:
+      tags: [报名]
+      operationId: getRegistration
+      summary: 获取本人赛事报名信息
+      security: [{bearerAuth: []}]
+      x-required-roles: [STUDENT]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/RegistrationResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    put:
+      tags: [报名]
+      operationId: updateRegistration
+      summary: 更改报名赛道
+      security: [{bearerAuth: []}]
+      x-required-roles: [STUDENT]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UpdateRegistrationDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    delete:
+      tags: [报名]
+      operationId: deleteRegistration
+      summary: 取消赛事报名
+      security: [{bearerAuth: []}]
+      x-required-roles: [STUDENT]
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+
+  /team/{id}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: integer, format: int32, minimum: 1}, description: POST 时为赛道 ID；GET、PUT、DELETE 时为队伍 ID}
+    post:
+      tags: [队伍]
+      operationId: createTeam
+      summary: 在赛道下创建队伍
+      security: [{bearerAuth: []}]
+      x-required-roles: [STUDENT]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateTeamDTO'}}}
+      responses:
+        '200': {description: 创建成功, content: {application/json: {schema: {$ref: '#/components/schemas/TeamIdResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    get:
+      tags: [队伍]
+      operationId: getTeam
+      summary: 查询队伍详情
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_MEMBER, EVENT_ADMIN]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/TeamInfoResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    put:
+      tags: [队伍]
+      operationId: updateTeam
+      summary: 修改队伍信息
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_LEADER, EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UpdateTeamDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    delete:
+      tags: [队伍]
+      operationId: deleteTeam
+      summary: 解散队伍
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_LEADER, EVENT_ADMIN]
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/{teamId}/join:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+    post:
+      tags: [队伍]
+      operationId: joinTeam
+      summary: 加入队伍
+      security: [{bearerAuth: []}]
+      x-required-roles: [STUDENT]
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/{teamId}/invite:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+    post:
+      tags: [队伍]
+      operationId: inviteTeamMember
+      summary: 向用户发送待确认的组队邀请
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_LEADER, EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UserIdDTO'}}}
+      responses:
+        '200': {description: 邀请已发送, content: {application/json: {schema: {$ref: '#/components/schemas/IntegerResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/{teamId}/leave:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+    delete:
+      tags: [队伍]
+      operationId: leaveTeam
+      summary: 离开队伍
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_MEMBER]
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/{teamId}/kick:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+    delete:
+      tags: [队伍]
+      operationId: kickTeamMember
+      summary: 移除队伍成员
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_LEADER, EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UserIdDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+
+  /event/{eventId}/team-config:
+    put:
+      tags: [队伍]
+      operationId: updateEventTeamConfig
+      summary: 配置赛事队伍人数上下限
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      parameters: [{$ref: '#/components/parameters/EventId'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UpdateTeamConfigDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/join-code:
+    post:
+      tags: [队伍]
+      operationId: joinTeamByInviteCode
+      summary: 使用私密邀请码加入队伍
+      security: [{bearerAuth: []}]
+      x-required-roles: [STUDENT]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/InviteCodeDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/{teamId}/invite-code:
+    post:
+      tags: [队伍]
+      operationId: refreshTeamInviteCode
+      summary: 刷新队伍私密邀请码，旧码立即失效
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_LEADER, EVENT_ADMIN]
+      parameters: [{$ref: '#/components/parameters/TeamId'}]
+      responses:
+        '200': {description: 邀请码已刷新, content: {application/json: {schema: {$ref: '#/components/schemas/StringResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/{teamId}/members:
+    post:
+      tags: [队伍]
+      operationId: adminAddTeamMember
+      summary: 赛事管理员人工添加队员
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      parameters: [{$ref: '#/components/parameters/TeamId'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UserIdDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/{teamId}/leader/transfer:
+    post:
+      tags: [队伍]
+      operationId: transferTeamLeader
+      summary: 当前队长将队长职责转让给本队成员
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_LEADER]
+      parameters: [{$ref: '#/components/parameters/TeamId'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UserIdDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/{teamId}/leader:
+    put:
+      tags: [队伍]
+      operationId: adminSetTeamLeader
+      summary: 赛事管理员将本队成员设置为队长
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      parameters: [{$ref: '#/components/parameters/TeamId'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UserIdDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/invitations:
+    get:
+      tags: [队伍]
+      operationId: listMyTeamInvitations
+      summary: 查询本人收到的组队邀请
+      security: [{bearerAuth: []}]
+      x-required-roles: [STUDENT]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/TeamInvitationListResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/{teamId}/invitations/{invitationId}/accept:
+    post:
+      tags: [队伍]
+      operationId: acceptTeamInvitation
+      summary: 接受组队邀请
+      security: [{bearerAuth: []}]
+      x-required-roles: [STUDENT]
+      parameters:
+        - {$ref: '#/components/parameters/TeamId'}
+        - {name: invitationId, in: path, required: true, schema: {type: integer, format: int32}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/{teamId}/invitations/{invitationId}/reject:
+    post:
+      tags: [队伍]
+      operationId: rejectTeamInvitation
+      summary: 拒绝组队邀请
+      security: [{bearerAuth: []}]
+      x-required-roles: [STUDENT]
+      parameters:
+        - {$ref: '#/components/parameters/TeamId'}
+        - {name: invitationId, in: path, required: true, schema: {type: integer, format: int32}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/{teamId}/recruitments:
+    post:
+      tags: [人才招募]
+      operationId: createTeamRecruitment
+      summary: 发布队伍人才缺口
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_LEADER, EVENT_ADMIN]
+      parameters: [{$ref: '#/components/parameters/TeamId'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateRecruitmentDTO'}}}
+      responses:
+        '200': {description: 发布成功, content: {application/json: {schema: {$ref: '#/components/schemas/IntegerResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/{teamId}/recruitments/{recruitmentId}:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {name: recruitmentId, in: path, required: true, schema: {type: integer, format: int32}}
+    put:
+      tags: [人才招募]
+      operationId: updateTeamRecruitment
+      summary: 修改或关闭人才缺口
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_LEADER, EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UpdateRecruitmentDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    delete:
+      tags: [人才招募]
+      operationId: deleteTeamRecruitment
+      summary: 删除人才缺口
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_LEADER, EVENT_ADMIN]
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/events/{eventId}/recruitments/list:
+    post:
+      tags: [人才招募]
+      operationId: listRecruitments
+      summary: 分页检索开放的队伍招募信息
+      security: [{bearerAuth: []}]
+      x-required-roles: [STUDENT]
+      parameters:
+        - {$ref: '#/components/parameters/EventId'}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/QueryRecruitmentDTO'}}}
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/RecruitmentPageResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/recruitments/{recruitmentId}/applications:
+    post:
+      tags: [人才招募]
+      operationId: applyToTeam
+      summary: 申请加入招募队伍
+      security: [{bearerAuth: []}]
+      x-required-roles: [STUDENT]
+      parameters:
+        - {name: recruitmentId, in: path, required: true, schema: {type: integer, format: int32}}
+      responses:
+        '200': {description: 申请已提交, content: {application/json: {schema: {$ref: '#/components/schemas/IntegerResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/{teamId}/applications:
+    get:
+      tags: [人才招募]
+      operationId: listTeamApplications
+      summary: 查询队伍收到的入队申请
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_LEADER, EVENT_ADMIN]
+      parameters: [{$ref: '#/components/parameters/TeamId'}]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/TeamApplicationListResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/{teamId}/applications/{applicationId}/accept:
+    post:
+      tags: [人才招募]
+      operationId: acceptTeamApplication
+      summary: 接受入队申请
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_LEADER, EVENT_ADMIN]
+      parameters:
+        - {$ref: '#/components/parameters/TeamId'}
+        - {name: applicationId, in: path, required: true, schema: {type: integer, format: int32}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/{teamId}/applications/{applicationId}/reject:
+    post:
+      tags: [人才招募]
+      operationId: rejectTeamApplication
+      summary: 拒绝入队申请
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_LEADER, EVENT_ADMIN]
+      parameters:
+        - {$ref: '#/components/parameters/TeamId'}
+        - {name: applicationId, in: path, required: true, schema: {type: integer, format: int32}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/events/{eventId}/recommendation:
+    parameters: [{$ref: '#/components/parameters/EventId'}]
+    put:
+      tags: [人才招募]
+      operationId: publishMyRecommendation
+      summary: 发布或重新开放本人自荐名片
+      security: [{bearerAuth: []}]
+      x-required-roles: [STUDENT]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/PublishRecommendationDTO'}}}
+      responses:
+        '200': {description: 自荐已发布, content: {application/json: {schema: {$ref: '#/components/schemas/IntegerResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    delete:
+      tags: [人才招募]
+      operationId: closeMyRecommendation
+      summary: 撤下本人自荐名片
+      security: [{bearerAuth: []}]
+      x-required-roles: [STUDENT]
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/events/{eventId}/recommendations/list:
+    post:
+      tags: [人才招募]
+      operationId: listStudentRecommendations
+      summary: 分页检索未组队选手自荐名片
+      security: [{bearerAuth: []}]
+      x-required-roles: [STUDENT]
+      parameters:
+        - {$ref: '#/components/parameters/EventId'}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/QueryRecommendationDTO'}}}
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/RecommendationPageResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /team/events/{eventId}/admin/list:
+    post:
+      tags: [队伍]
+      operationId: adminListTeams
+      summary: 赛事管理员分页检索队伍
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      parameters:
+        - {$ref: '#/components/parameters/EventId'}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/QueryTeamDTO'}}}
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/TeamPageResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+
+  /submission/phase/{phaseId}/team/{teamId}:
+    parameters:
+      - {$ref: '#/components/parameters/PhaseId'}
+      - {$ref: '#/components/parameters/TeamId'}
+    get:
+      tags: [作品]
+      operationId: getSubmissionByPhaseAndTeam
+      summary: 获取队伍在轮次中的作品
+      description: 尚未提交时，data 仍包含本轮动态表单配置，其余作品字段可为空。
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_MEMBER, EVENT_ADMIN, EVENT_JUDGE]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/SubmissionInfoResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    post:
+      tags: [作品]
+      operationId: submitWork
+      summary: 提交或重新提交作品
+      description: 每次提交生成一个新版本；实际必填项由轮次提交配置动态决定。
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_LEADER]
+      x-required-window: SUBMIT
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SubmitWorkDTO'}}}
+      responses:
+        '200': {description: 提交成功, content: {application/json: {schema: {$ref: '#/components/schemas/SubmissionIdResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /submission/{submissionId}:
+    parameters:
+      - {$ref: '#/components/parameters/SubmissionId'}
+    get:
+      tags: [作品]
+      operationId: getSubmissionById
+      summary: 按作品 ID 获取详情
+      security: [{bearerAuth: []}]
+      x-required-roles: [SUBMISSION_OWNER, EVENT_ADMIN, EVENT_JUDGE]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/SubmissionInfoResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /submission/{submissionId}/supplement:
+    parameters:
+      - {$ref: '#/components/parameters/SubmissionId'}
+    post:
+      tags: [作品]
+      operationId: supplementWork
+      summary: 补交作品
+      description: 仅在作品存在未处理且未过期的异常标记时放行，补交生成新版本。
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_LEADER]
+      x-required-window: SUPPLEMENT
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SubmitWorkDTO'}}}
+      responses:
+        '200': {description: 补交成功, content: {application/json: {schema: {$ref: '#/components/schemas/SubmissionIdResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /submission/{submissionId}/version:
+    parameters:
+      - {$ref: '#/components/parameters/SubmissionId'}
+    get:
+      tags: [作品]
+      operationId: listSubmissionVersions
+      summary: 获取作品版本日志
+      security: [{bearerAuth: []}]
+      x-required-roles: [SUBMISSION_OWNER, EVENT_ADMIN, EVENT_JUDGE]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/SubmissionVersionListResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /submission/{submissionId}/version/{versionNo}:
+    parameters:
+      - {$ref: '#/components/parameters/SubmissionId'}
+      - {$ref: '#/components/parameters/VersionNo'}
+    get:
+      tags: [作品]
+      operationId: getSubmissionVersion
+      summary: 获取作品历史版本快照
+      security: [{bearerAuth: []}]
+      x-required-roles: [SUBMISSION_OWNER, EVENT_ADMIN, EVENT_JUDGE]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/SubmissionVersionResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+
+  /review/phase/{phaseId}/dimension:
+    parameters:
+      - {$ref: '#/components/parameters/PhaseId'}
+    get:
+      tags: [评审]
+      operationId: listReviewDimensions
+      summary: 获取本轮评分维度
+      security: [{bearerAuth: []}]
+      x-required-roles: [LOGGED_IN]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/DimensionListResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    post:
+      tags: [评审]
+      operationId: createReviewDimension
+      summary: 新增评分维度
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateDimensionDTO'}}}
+      responses:
+        '200': {description: 创建成功, content: {application/json: {schema: {$ref: '#/components/schemas/DimensionIdResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /review/phase/{phaseId}/dimension/{dimensionId}:
+    parameters:
+      - {$ref: '#/components/parameters/PhaseId'}
+      - {$ref: '#/components/parameters/DimensionId'}
+    put:
+      tags: [评审]
+      operationId: updateReviewDimension
+      summary: 修改评分维度
+      description: 本轮已有评委完成打分后，维度锁定且不可修改。
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UpdateDimensionDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    delete:
+      tags: [评审]
+      operationId: deleteReviewDimension
+      summary: 删除评分维度
+      description: 本轮已有评委完成打分后，维度锁定且不可删除。
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /review/phase/{phaseId}/assignment:
+    parameters:
+      - {$ref: '#/components/parameters/PhaseId'}
+    post:
+      tags: [评审]
+      operationId: assignJudges
+      summary: 批量指派评委
+      description: 按评委与作品的笛卡尔积创建任务，已存在或利益冲突的组合跳过。
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/AssignJudgeDTO'}}}
+      responses:
+        '200': {description: 指派成功, content: {application/json: {schema: {$ref: '#/components/schemas/AssignResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /review/phase/{phaseId}/assignment/auto:
+    parameters:
+      - {$ref: '#/components/parameters/PhaseId'}
+    post:
+      tags: [评审]
+      operationId: autoAssignJudges
+      summary: 自动补齐评委
+      description: 按负载最轻优先为本轮每份作品补齐期望数量的评委。
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/AutoAssignDTO'}}}
+      responses:
+        '200': {description: 指派成功, content: {application/json: {schema: {$ref: '#/components/schemas/AssignResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /review/phase/{phaseId}/assignment/{assignmentId}/transfer:
+    parameters:
+      - {$ref: '#/components/parameters/PhaseId'}
+      - {$ref: '#/components/parameters/AssignmentId'}
+    post:
+      tags: [评审]
+      operationId: transferReviewAssignment
+      summary: 移交逾期评审任务
+      description: 未指定接手评委时，由系统按负载最轻原则挑选。
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/TransferAssignmentDTO'}}}
+      responses:
+        '200': {description: 移交成功, content: {application/json: {schema: {$ref: '#/components/schemas/RecuseResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /review/phase/{phaseId}/task:
+    parameters:
+      - {$ref: '#/components/parameters/PhaseId'}
+    get:
+      tags: [评审]
+      operationId: listReviewTasks
+      summary: 获取评委本轮任务列表
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_JUDGE]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/ReviewTaskListResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /review/submission/{submissionId}:
+    parameters:
+      - {$ref: '#/components/parameters/SubmissionId'}
+    get:
+      tags: [评审]
+      operationId: getReviewWork
+      summary: 获取作品评审视图
+      description: 返回作品、评分维度、当前评委已有打分和异常标记；盲审时隐藏身份信息。
+      security: [{bearerAuth: []}]
+      x-required-roles: [ASSIGNED_JUDGE, EVENT_ADMIN]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/ReviewWorkResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /review/submission/{submissionId}/preview:
+    parameters:
+      - {$ref: '#/components/parameters/SubmissionId'}
+    get:
+      tags: [评审]
+      operationId: previewSubmission
+      summary: 获取作品在线预览入口
+      security: [{bearerAuth: []}]
+      x-required-roles: [ASSIGNED_JUDGE, EVENT_ADMIN, SUBMISSION_OWNER]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/ReviewPreviewResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /review/submission/{submissionId}/score:
+    parameters:
+      - {$ref: '#/components/parameters/SubmissionId'}
+    post:
+      tags: [评审]
+      operationId: scoreSubmission
+      summary: 提交或覆盖作品评分
+      security: [{bearerAuth: []}]
+      x-required-roles: [ASSIGNED_JUDGE]
+      x-required-window: REVIEW
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ScoreWorkDTO'}}}
+      responses:
+        '200': {description: 打分成功，data 为加权总分, content: {application/json: {schema: {$ref: '#/components/schemas/DecimalResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /review/submission/{submissionId}/recuse:
+    parameters:
+      - {$ref: '#/components/parameters/SubmissionId'}
+    post:
+      tags: [评审]
+      operationId: recuseReviewAssignment
+      summary: 申请利益回避
+      security: [{bearerAuth: []}]
+      x-required-roles: [ASSIGNED_JUDGE]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/RecuseDTO'}}}
+      responses:
+        '200': {description: 回避成功, content: {application/json: {schema: {$ref: '#/components/schemas/RecuseResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /review/submission/{submissionId}/flag:
+    parameters:
+      - {$ref: '#/components/parameters/SubmissionId'}
+    post:
+      tags: [评审]
+      operationId: flagSubmissionProblem
+      summary: 标记作品异常并开启补交窗口
+      security: [{bearerAuth: []}]
+      x-required-roles: [ASSIGNED_JUDGE]
+      x-required-window: REVIEW
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/FlagWorkDTO'}}}
+      responses:
+        '200': {description: 已标记异常并开放补交窗口, content: {application/json: {schema: {$ref: '#/components/schemas/FlagIdResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    get:
+      tags: [评审]
+      operationId: listSubmissionFlags
+      summary: 获取作品异常标记列表
+      security: [{bearerAuth: []}]
+      x-required-roles: [ASSIGNED_JUDGE, EVENT_ADMIN, SUBMISSION_OWNER]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/ReviewFlagListResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /review/submission/{submissionId}/flag/{flagId}/close:
+    parameters:
+      - {$ref: '#/components/parameters/SubmissionId'}
+      - {$ref: '#/components/parameters/FlagId'}
+    post:
+      tags: [评审]
+      operationId: closeSubmissionFlag
+      summary: 提前关闭补交窗口
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CloseFlagDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /review/phase/{phaseId}/progress:
+    parameters:
+      - {$ref: '#/components/parameters/PhaseId'}
+    get:
+      tags: [评审]
+      operationId: getReviewProgress
+      summary: 获取本轮打分进度
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/PhaseProgressResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /review/phase/{phaseId}/urge:
+    parameters:
+      - {$ref: '#/components/parameters/PhaseId'}
+    post:
+      tags: [评审]
+      operationId: urgeJudges
+      summary: 催办评委
+      description: judgeIds 为空时催办本轮全部仍有待评任务的评委。
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UrgeJudgeDTO'}}}
+      responses:
+        '200': {description: 催办成功, content: {application/json: {schema: {$ref: '#/components/schemas/UrgeResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /review/submission/{submissionId}/result:
+    parameters:
+      - {$ref: '#/components/parameters/SubmissionId'}
+    get:
+      tags: [评审]
+      operationId: getSubmissionResult
+      summary: 获取单份作品最终得分
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/SubmissionResultResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /review/phase/{phaseId}/result:
+    parameters:
+      - {$ref: '#/components/parameters/PhaseId'}
+    get:
+      tags: [评审]
+      operationId: listSubmissionResults
+      summary: 获取本轮作品最终得分榜
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/SubmissionResultListResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+
+  /file/avatar:
+    post:
+      tags: [文件]
+      operationId: presignAvatarUpload
+      summary: 签发头像上传凭证
+      security: [{bearerAuth: []}]
+      x-required-roles: [LOGGED_IN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UploadDTO'}}}
+      responses:
+        '200': {description: 已签发上传凭证, content: {application/json: {schema: {$ref: '#/components/schemas/UploadResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /file/event/{eventId}:
+    parameters:
+      - {$ref: '#/components/parameters/EventId'}
+    post:
+      tags: [文件]
+      operationId: presignEventAssetUpload
+      summary: 签发赛事资源上传凭证
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UploadDTO'}}}
+      responses:
+        '200': {description: 已签发上传凭证, content: {application/json: {schema: {$ref: '#/components/schemas/UploadResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /file/track/{trackId}:
+    parameters:
+      - {$ref: '#/components/parameters/TrackId'}
+    post:
+      tags: [文件]
+      operationId: presignTrackAssetUpload
+      summary: 签发赛道附件上传凭证
+      security: [{bearerAuth: []}]
+      x-required-roles: [EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UploadDTO'}}}
+      responses:
+        '200': {description: 已签发上传凭证, content: {application/json: {schema: {$ref: '#/components/schemas/UploadResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /file/phase/{phaseId}/team/{teamId}/submit:
+    parameters:
+      - {$ref: '#/components/parameters/PhaseId'}
+      - {$ref: '#/components/parameters/TeamId'}
+    post:
+      tags: [文件]
+      operationId: presignSubmissionFileUpload
+      summary: 签发作品文件上传凭证
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_LEADER, TEAM_MEMBER]
+      x-required-window: SUBMIT
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UploadDTO'}}}
+      responses:
+        '200': {description: 已签发上传凭证, content: {application/json: {schema: {$ref: '#/components/schemas/UploadResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /file/submission/{submissionId}/supplement:
+    parameters:
+      - {$ref: '#/components/parameters/SubmissionId'}
+    post:
+      tags: [文件]
+      operationId: presignSupplementFileUpload
+      summary: 签发补交文件上传凭证
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_LEADER]
+      x-required-window: SUPPLEMENT
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UploadDTO'}}}
+      responses:
+        '200': {description: 已签发上传凭证, content: {application/json: {schema: {$ref: '#/components/schemas/UploadResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /file/phase/{phaseId}/team/{teamId}/appeal:
+    parameters:
+      - {$ref: '#/components/parameters/PhaseId'}
+      - {$ref: '#/components/parameters/TeamId'}
+    post:
+      tags: [文件]
+      operationId: presignAppealFileUpload
+      summary: 签发申诉文件上传凭证
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_LEADER]
+      x-required-window: PUBLICITY
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UploadDTO'}}}
+      responses:
+        '200': {description: 已签发上传凭证, content: {application/json: {schema: {$ref: '#/components/schemas/UploadResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /file/team/{teamId}/showcase:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+    post:
+      tags: [文件]
+      operationId: presignShowcaseUpload
+      summary: 签发队伍展示资源上传凭证
+      security: [{bearerAuth: []}]
+      x-required-roles: [TEAM_LEADER, EVENT_ADMIN]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UploadDTO'}}}
+      responses:
+        '200': {description: 已签发上传凭证, content: {application/json: {schema: {$ref: '#/components/schemas/UploadResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /file/{fileId}/complete:
+    parameters:
+      - {$ref: '#/components/parameters/FileId'}
+    post:
+      tags: [文件]
+      operationId: completeFileUpload
+      summary: 确认文件上传完成
+      description: 客户端使用 uploadUrl 直传对象存储后调用，服务端校验对象大小和元数据并转为 READY。
+      security: [{bearerAuth: []}]
+      x-required-roles: [LOGGED_IN]
+      responses:
+        '200': {description: 上传完成, content: {application/json: {schema: {$ref: '#/components/schemas/FileInfoResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /file/{fileId}/url:
+    parameters:
+      - {$ref: '#/components/parameters/FileId'}
+    get:
+      tags: [文件]
+      operationId: getFileUrl
+      summary: 获取文件访问地址
+      security: [{}, {bearerAuth: []}]
+      parameters:
+        - {name: download, in: query, required: false, schema: {type: boolean, default: false}, description: 是否以附件方式下载}
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/FileUrlResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /file/{fileId}:
+    parameters:
+      - {$ref: '#/components/parameters/FileId'}
+    get:
+      tags: [文件]
+      operationId: getFileInfo
+      summary: 获取文件元信息
+      security: [{}, {bearerAuth: []}]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/FileInfoResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+    delete:
+      tags: [文件]
+      operationId: deleteFile
+      summary: 删除文件
+      security: [{bearerAuth: []}]
+      x-required-roles: [LOGGED_IN]
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+
+  /vote/submission/{submissionId}:
+    parameters:
+      - {$ref: '#/components/parameters/SubmissionId'}
+    post:
+      tags: [投票]
+      operationId: castVote
+      summary: 为作品投票
+      description: 同一用户对同一作品仅一票，且受轮次每日票数上限约束。
+      security: [{bearerAuth: []}]
+      x-required-roles: [LOGGED_IN]
+      x-required-window: VOTE
+      responses:
+        '200': {description: 投票成功, content: {application/json: {schema: {$ref: '#/components/schemas/VoteCastResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /vote/phase/{phaseId}/ranking:
+    parameters:
+      - {$ref: '#/components/parameters/PhaseId'}
+    get:
+      tags: [投票]
+      operationId: getVoteRanking
+      summary: 获取本轮人气榜
+      description: 匿名可访问；登录时 voted 标记本人是否已投。未开启大众投票时返回空榜。
+      security: [{}, {bearerAuth: []}]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/VoteRankListResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /vote/phase/{phaseId}/status:
+    parameters:
+      - {$ref: '#/components/parameters/PhaseId'}
+    get:
+      tags: [投票]
+      operationId: getVoteStatus
+      summary: 获取本人本轮投票状态
+      security: [{bearerAuth: []}]
+      x-required-roles: [LOGGED_IN]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/VoteStatusResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+
+  /notification:
+    get:
+      tags: [通知]
+      operationId: getNotificationPage
+      summary: 获取本人通知列表
+      security: [{bearerAuth: []}]
+      x-required-roles: [LOGGED_IN]
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+        - {name: unread, in: query, required: false, schema: {type: boolean, default: false}, description: 是否仅看未读}
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/NotificationPageResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /notification/unread:
+    get:
+      tags: [通知]
+      operationId: countUnreadNotifications
+      summary: 获取本人未读通知数
+      security: [{bearerAuth: []}]
+      x-required-roles: [LOGGED_IN]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/LongResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+  /notification/read:
+    put:
+      tags: [通知]
+      operationId: readNotifications
+      summary: 标记通知已读
+      description: 请求体可省略；省略或 notificationIds 为空时标记本人全部通知已读。
+      security: [{bearerAuth: []}]
+      x-required-roles: [LOGGED_IN]
+      requestBody:
+        required: false
+        content: {application/json: {schema: {$ref: '#/components/schemas/ReadNoticeDTO'}}}
+      responses:
+        '200': {$ref: '#/components/responses/OkResponse'}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 登录或兑换后返回的 ACCESS 类型 JWT。
+  parameters:
+    EventId: {name: eventId, in: path, required: true, schema: {type: integer, format: int32, minimum: 1}, description: 赛事 ID}
+    TrackId: {name: trackId, in: path, required: true, schema: {type: integer, format: int32, minimum: 1}, description: 赛道 ID}
+    PhaseId: {name: phaseId, in: path, required: true, schema: {type: integer, format: int32, minimum: 1}, description: 轮次 ID}
+    TeamId: {name: teamId, in: path, required: true, schema: {type: integer, format: int32, minimum: 1}, description: 队伍 ID}
+    UserId: {name: userId, in: path, required: true, schema: {type: integer, format: int32, minimum: 1}, description: 用户 ID}
+    SubmissionId: {name: submissionId, in: path, required: true, schema: {type: integer, format: int32, minimum: 1}, description: 作品 ID}
+    FileId: {name: fileId, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}, description: 文件 ID}
+    DimensionId: {name: dimensionId, in: path, required: true, schema: {type: integer, format: int32, minimum: 1}, description: 评分维度 ID}
+    AssignmentId: {name: assignmentId, in: path, required: true, schema: {type: integer, format: int32, minimum: 1}, description: 评审任务 ID}
+    FlagId: {name: flagId, in: path, required: true, schema: {type: integer, format: int32, minimum: 1}, description: 异常标记 ID}
+    VersionNo: {name: versionNo, in: path, required: true, schema: {type: integer, format: int32, minimum: 1}, description: 作品版本序号}
+    Page: {name: page, in: query, required: false, schema: {type: integer, minimum: 1, default: 1}, description: 页码，从 1 开始}
+    Size: {name: size, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 10}, description: 每页条数}
+  responses:
+    OkResponse:
+      description: 操作成功
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/VoidResult'}
+    ErrorResponse:
+      description: 业务异常、鉴权失败、参数错误或系统异常
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResult'}
+          examples:
+            parameterError: {summary: 参数错误, value: {code: 4000, data: null, msg: 参数错误}}
+            unauthorized: {summary: 未携带令牌, value: {code: 1004, data: null, msg: 未携带token}}
+            notFound: {summary: 资源不存在, value: {code: 3001, data: null, msg: 赛事不存在}}
+  schemas:
+    LocalDateTime:
+      type: string
+      description: ISO-8601 本地日期时间，不包含时区偏移；服务端业务时区为 Asia/Shanghai。
+      pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$'
+      example: '2026-08-30T14:30:00'
+    EventStatus: {type: string, enum: [赛前准备, 报名阶段, 赛前休整, 赛事进行, 赛事结束]}
+    PhaseStatus: {type: string, enum: [未开始, 正在提交, 提交结束, 正在评审, 已结束]}
+    TeamType: {type: string, enum: [同专业, 跨专业, 跨校区]}
+    TeamStatus: {type: string, enum: [晋级, 淘汰]}
+    AuthorityType: {type: string, enum: [超级管理员, 赛事管理员, 赛事评委]}
+    FileScope:
+      type: string
+      enum: [AVATAR, EVENT_COVER, TRACK_ATTACHMENT, SUBMIT_ARCHIVE, SUBMIT_VIDEO, SUBMIT_DOC, SUBMIT_IMAGE, MILESTONE, APPEAL, CERT_TEMPLATE, CERT_SEAL, CERTIFICATE, EXPORT, SHOWCASE]
+    FileStatus: {type: string, enum: [PENDING, READY, DELETED]}
+    SubmissionStatus: {type: string, enum: [已提交, '已提交，待评审']}
+    ReviewStatus: {type: string, enum: [待评审, 已完成, 已回避, 已移交]}
+    AssignSource: {type: string, enum: [管理员指派, 回避后重新分发, 逾期移交]}
+    FlagTarget: {type: string, enum: [在线Demo网址, 演示视频, 演示文档, 源码压缩包, 代码仓库地址, 其他]}
+    FlagStatus: {type: string, enum: [待补交, 已补交, 已关闭]}
+    NoticeType: {type: string, enum: [评审任务指派, 评审任务移交, 打分催办, 作品异常与补交, 补交窗口关闭, 组队邀请, 入队申请, 入队申请结果, 队长变更]}
+    TeamFlowStatus: {type: string, enum: [待处理, 已接受, 已拒绝, 已取消]}
+
+    SduPassTestDTO:
+      type: object
+      required: [casId, name]
+      properties:
+        casId: {type: string, minLength: 1, description: 学号}
+        name: {type: string, minLength: 1, description: 姓名}
+    LoginDTO:
+      type: object
+      required: [term, password]
+      properties:
+        term: {type: string, minLength: 1, description: 学号、手机号或邮箱}
+        password: {type: string, minLength: 1, format: password}
+    CreateStudentDTO:
+      type: object
+      required: [token, phone, email, campus, major]
+      properties:
+        token: {type: string, minLength: 1, description: REGISTER 类型短时令牌}
+        phone: {type: string, pattern: '^1[3-9]\d{9}$'}
+        email: {type: string, format: email}
+        password: {type: string, format: password, minLength: 6, maxLength: 20, description: 可选；传入时长度为 6 至 20}
+        campus: {type: string, enum: [中心校区, 洪家楼校区, 趵突泉校区, 千佛山校区, 软件园校区, 兴隆山校区, 威海校区, 青岛校区]}
+        major: {type: string, minLength: 1, maxLength: 50}
+        tags: {type: array, items: {type: string}}
+    UpdateStudentDTO:
+      type: object
+      required: [phone, email, campus, major]
+      properties:
+        phone: {type: string, pattern: '^1[3-9]\d{9}$'}
+        email: {type: string, format: email}
+        campus: {type: string, enum: [中心校区, 洪家楼校区, 趵突泉校区, 千佛山校区, 软件园校区, 兴隆山校区, 威海校区, 青岛校区]}
+        major: {type: string, minLength: 1, maxLength: 50}
+        introduction: {type: string, maxLength: 100}
+        tags: {type: array, items: {type: string}}
+    UpdateExUserDTO:
+      type: object
+      required: [phone, email]
+      properties:
+        phone: {type: string, pattern: '^1[3-9]\d{9}$'}
+        email: {type: string, format: email}
+        organization: {type: string}
+    UpdatePasswordDTO:
+      type: object
+      required: [newPassword]
+      properties:
+        oldPassword: {type: string, format: password, minLength: 6, maxLength: 20, description: 已设置密码时须传入}
+        newPassword: {type: string, format: password, minLength: 6, maxLength: 20}
+    CreateExUserDTO:
+      type: object
+      required: [name, onCampus, phone, email, password]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 50}
+        onCampus: {type: boolean, description: 是否校内人员}
+        phone: {type: string, pattern: '^1[3-9]\d{9}$'}
+        email: {type: string, format: email}
+        organization: {type: string, maxLength: 50}
+        password: {type: string, format: password, minLength: 6, maxLength: 20}
+    QueryUserDTO:
+      type: object
+      properties:
+        userId: {type: integer, format: int32, description: 精确匹配}
+        name: {type: string, description: 包含匹配}
+        phone: {type: string, maxLength: 11, description: 前缀匹配}
+        email: {type: string, description: 前缀匹配}
+        casId: {type: string, maxLength: 12, description: 学号前缀匹配}
+        onlyStudent: {type: boolean, default: false}
+        onlyExtern: {type: boolean, default: false}
+        onlySuper: {type: boolean, default: false}
+    UserIdDTO:
+      type: object
+      required: [userId]
+      properties:
+        userId: {type: integer, format: int32}
+    CreateEventDTO:
+      type: object
+      required: [name, regBeg, regEnd, liveBeg, liveEnd]
+      properties:
+        name: {type: string, minLength: 1}
+        regBeg: {$ref: '#/components/schemas/LocalDateTime'}
+        regEnd: {$ref: '#/components/schemas/LocalDateTime'}
+        liveBeg: {$ref: '#/components/schemas/LocalDateTime'}
+        liveEnd: {$ref: '#/components/schemas/LocalDateTime'}
+        introduction: {type: string}
+        tags: {type: string, description: 仓库当前以字符串保存的赛事标签}
+    UpdateEventDTO:
+      type: object
+      required: [name, regBeg, regEnd, liveBeg, liveEnd, version]
+      properties:
+        name: {type: string, minLength: 1}
+        regBeg: {$ref: '#/components/schemas/LocalDateTime'}
+        regEnd: {$ref: '#/components/schemas/LocalDateTime'}
+        liveBeg: {$ref: '#/components/schemas/LocalDateTime'}
+        liveEnd: {$ref: '#/components/schemas/LocalDateTime'}
+        introduction: {type: string}
+        tags: {type: string}
+        notice: {type: string}
+        version: {type: integer, format: int32, description: 乐观锁版本号}
+    QueryEventDTO:
+      type: object
+      properties:
+        name: {type: string}
+        statuses: {type: array, items: {$ref: '#/components/schemas/EventStatus'}}
+        tags: {type: array, items: {type: string}}
+    CreateTrackDTO:
+      type: object
+      required: [name, descMd]
+      properties:
+        name: {type: string, minLength: 1}
+        descMd: {type: string, minLength: 1, description: Markdown 格式赛道描述}
+    UpdateTrackDTO:
+      type: object
+      required: [name, descMd, version]
+      properties:
+        name: {type: string, minLength: 1}
+        descMd: {type: string, minLength: 1}
+        version: {type: integer, format: int32}
+    CreatePhaseDTO:
+      type: object
+      required: [name, submitBeg, submitEnd, reviewBeg, reviewEnd]
+      properties:
+        name: {type: string, minLength: 1}
+        submitBeg: {$ref: '#/components/schemas/LocalDateTime'}
+        submitEnd: {$ref: '#/components/schemas/LocalDateTime'}
+        reviewBeg: {$ref: '#/components/schemas/LocalDateTime'}
+        reviewEnd: {$ref: '#/components/schemas/LocalDateTime'}
+        blindReview: {type: boolean, default: false}
+        midCheck: {type: boolean, default: false}
+        manualPick: {type: boolean, default: false}
+        passRate: {type: number, minimum: 0, maximum: 1}
+        poll: {type: boolean, default: false}
+        pollBeg: {$ref: '#/components/schemas/LocalDateTime'}
+        pollEnd: {$ref: '#/components/schemas/LocalDateTime'}
+        pollDailyCap: {type: integer, minimum: 1, description: 开启大众投票时的每日票数上限}
+    UpdatePhaseDTO:
+      allOf:
+        - {$ref: '#/components/schemas/CreatePhaseDTO'}
+        - type: object
+          required: [version]
+          properties:
+            version: {type: integer, format: int32}
+    UpdatePhaseConfigDTO:
+      type: object
+      required: [version]
+      properties:
+        repository: {type: boolean, default: false}
+        openSource: {type: boolean, default: false}
+        licenseType: {type: string}
+        zip: {type: boolean, default: false}
+        maxSizeMB: {type: integer, format: int32}
+        video: {type: boolean, default: false}
+        videoMaxSizeMB: {type: integer, format: int32}
+        powerpoint: {type: boolean, default: false}
+        website: {type: boolean, default: false}
+        markdown: {type: boolean, default: false}
+        declare: {type: boolean, default: false}
+        version: {type: integer, format: int32}
+    UpdateRegistrationDTO:
+      type: object
+      required: [trackId, version]
+      properties:
+        trackId: {type: integer, format: int32}
+        version: {type: integer, format: int32}
+    CreateTeamDTO:
+      type: object
+      required: [name, type]
+      properties:
+        name: {type: string, minLength: 1}
+        introduction: {type: string}
+        type: {$ref: '#/components/schemas/TeamType'}
+    UpdateTeamDTO:
+      type: object
+      required: [name, type, version]
+      properties:
+        name: {type: string, minLength: 1}
+        introduction: {type: string}
+        type: {$ref: '#/components/schemas/TeamType'}
+        version: {type: integer, format: int32}
+    UpdateTeamConfigDTO:
+      type: object
+      required: [minSize, maxSize, version]
+      properties:
+        minSize: {type: integer, minimum: 1}
+        maxSize: {type: integer, minimum: 1, maximum: 100}
+        version: {type: integer, format: int32}
+    InviteCodeDTO:
+      type: object
+      required: [code]
+      properties:
+        code: {type: string, pattern: '^[A-Za-z0-9]{12}$'}
+    CreateRecruitmentDTO:
+      type: object
+      required: [title, vacancies]
+      properties:
+        title: {type: string, minLength: 1, maxLength: 100}
+        description: {type: string, maxLength: 1000}
+        requiredTags: {type: array, maxItems: 20, items: {type: string}}
+        vacancies: {type: integer, minimum: 1}
+    UpdateRecruitmentDTO:
+      allOf:
+        - {$ref: '#/components/schemas/CreateRecruitmentDTO'}
+        - type: object
+          required: [open, version]
+          properties:
+            open: {type: boolean}
+            version: {type: integer, format: int32}
+    QueryRecruitmentDTO:
+      type: object
+      properties:
+        trackId: {type: integer, format: int32}
+        keyword: {type: string}
+        skill: {type: string}
+    PublishRecommendationDTO:
+      type: object
+      required: [introduction]
+      properties:
+        introduction: {type: string, minLength: 1, maxLength: 1000}
+        skills: {type: array, maxItems: 20, items: {type: string}}
+    QueryRecommendationDTO:
+      type: object
+      properties:
+        trackId: {type: integer, format: int32}
+        keyword: {type: string}
+        skill: {type: string}
+    QueryTeamDTO:
+      type: object
+      properties:
+        trackId: {type: integer, format: int32}
+        name: {type: string}
+        status: {$ref: '#/components/schemas/TeamStatus'}
+    SubmitWorkDTO:
+      type: object
+      description: 字段是否必填由轮次 submissionConfig 动态决定。
+      properties:
+        repoUrl: {type: string, maxLength: 255}
+        licenseType: {type: string, maxLength: 50}
+        derivedFrom: {type: string, maxLength: 500}
+        archiveFileId: {type: integer, format: int64, minimum: 1}
+        videoFileId: {type: integer, format: int64, minimum: 1}
+        videoUrl: {type: string, maxLength: 500}
+        docFileId: {type: integer, format: int64, minimum: 1}
+        demoUrl: {type: string, maxLength: 500}
+        introMd: {type: string}
+        declaration: {type: string}
+        changeLog: {type: string, maxLength: 200}
+        version: {type: integer, format: int32, description: 乐观锁版本号；首次提交可省略}
+    CreateDimensionDTO:
+      type: object
+      required: [name, maxScore, weight]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 50}
+        description: {type: string, maxLength: 200}
+        maxScore: {type: number, minimum: 0.01, maximum: 999.99}
+        weight: {type: number, minimum: 0.01, maximum: 999.99}
+        sortNo: {type: integer, format: int32, default: 0}
+    UpdateDimensionDTO:
+      allOf:
+        - {$ref: '#/components/schemas/CreateDimensionDTO'}
+        - type: object
+          required: [version]
+          properties:
+            version: {type: integer, format: int32}
+    AssignJudgeDTO:
+      type: object
+      required: [judgeIds, submissionIds]
+      properties:
+        judgeIds: {type: array, minItems: 1, items: {type: integer, format: int32}}
+        submissionIds: {type: array, minItems: 1, items: {type: integer, format: int32}}
+    AutoAssignDTO:
+      type: object
+      required: [judgeCount]
+      properties:
+        judgeCount: {type: integer, minimum: 1, maximum: 20}
+    TransferAssignmentDTO:
+      type: object
+      properties:
+        toJudgeId: {type: integer, format: int32, description: 接手评委 ID；省略时自动选择}
+        reason: {type: string, maxLength: 200}
+    ScoreItemDTO:
+      type: object
+      required: [dimensionId, score]
+      properties:
+        dimensionId: {type: integer, format: int32}
+        score: {type: number, minimum: 0}
+        comment: {type: string, maxLength: 500}
+    ScoreWorkDTO:
+      type: object
+      required: [scores]
+      properties:
+        scores: {type: array, minItems: 1, items: {$ref: '#/components/schemas/ScoreItemDTO'}}
+        comment: {type: string, maxLength: 1000}
+        version: {type: integer, format: int32, description: 乐观锁版本号；首次打分可省略}
+    RecuseDTO:
+      type: object
+      required: [reason]
+      properties:
+        reason: {type: string, minLength: 1, maxLength: 500}
+    FlagWorkDTO:
+      type: object
+      required: [target, description]
+      properties:
+        target: {$ref: '#/components/schemas/FlagTarget'}
+        description: {type: string, minLength: 1, maxLength: 500}
+        windowHours: {type: integer, minimum: 1, maximum: 72, description: 省略时使用服务端默认值，且不越过评审截止时间}
+    CloseFlagDTO:
+      type: object
+      required: [reason]
+      properties:
+        reason: {type: string, minLength: 1, maxLength: 200}
+    UrgeJudgeDTO:
+      type: object
+      properties:
+        judgeIds: {type: array, items: {type: integer, format: int32}, description: 为空时催办全部待评评委}
+        message: {type: string, maxLength: 200}
+    UploadDTO:
+      type: object
+      required: [scope, filename, sizeBytes]
+      properties:
+        scope: {$ref: '#/components/schemas/FileScope'}
+        filename: {type: string, minLength: 1, maxLength: 200}
+        sizeBytes: {type: integer, format: int64, minimum: 1}
+    ReadNoticeDTO:
+      type: object
+      properties:
+        notificationIds: {type: array, items: {type: integer, format: int64}}
+
+    AuthorityEventVO:
+      type: object
+      properties:
+        type: {$ref: '#/components/schemas/AuthorityType'}
+        eventId: {type: integer, format: int32}
+        eventName: {type: string}
+        eventStatus: {$ref: '#/components/schemas/EventStatus'}
+    AuthorityUserVO:
+      type: object
+      properties:
+        userId: {type: integer, format: int32}
+        name: {type: string}
+        type: {$ref: '#/components/schemas/AuthorityType'}
+    LoginVO:
+      type: object
+      properties:
+        token: {type: string, description: ACCESS 类型 JWT}
+        name: {type: string}
+        studentFlag: {type: boolean}
+        casId: {type: [string, 'null']}
+        authorities: {type: array, items: {$ref: '#/components/schemas/AuthorityEventVO'}}
+    CreateStudentVO:
+      type: object
+      properties:
+        token: {type: string, description: ACCESS 类型 JWT}
+        name: {type: string}
+        studentFlag: {type: boolean}
+        casId: {type: string}
+        existed: {type: boolean, description: 统一身份对应的学生是否已存在}
+        authorities: {type: array, items: {$ref: '#/components/schemas/AuthorityEventVO'}}
+    StudentTagsVO:
+      type: object
+      properties:
+        tags: {type: array, items: {type: string}}
+    StudentBriefVO:
+      type: object
+      properties:
+        campus: {type: string}
+        major: {type: string}
+        introduction: {type: [string, 'null']}
+        tags: {type: array, items: {type: string}}
+    StudentInfoVO:
+      type: object
+      properties:
+        phone: {type: string}
+        email: {type: string, format: email}
+        campus: {type: string}
+        major: {type: string}
+        introduction: {type: [string, 'null']}
+        tags: {type: array, items: {type: string}}
+    ExUserBriefVO:
+      type: object
+      properties:
+        onCampus: {type: boolean}
+        organization: {type: [string, 'null']}
+    ExUserInfoVO:
+      type: object
+      properties:
+        phone: {type: string}
+        email: {type: string, format: email}
+        onCampus: {type: boolean}
+        organization: {type: [string, 'null']}
+    UserBriefVO:
+      type: object
+      properties:
+        userId: {type: integer, format: int32}
+        name: {type: string}
+        studentFlag: {type: boolean}
+        phone: {type: string}
+        email: {type: string, format: email}
+    UserInfoVO:
+      type: object
+      properties:
+        userId: {type: integer, format: int32}
+        name: {type: string}
+        studentFlag: {type: boolean}
+        phone: {type: string}
+        email: {type: string, format: email}
+        student: {oneOf: [{$ref: '#/components/schemas/StudentBriefVO'}, {type: 'null'}]}
+        exUser: {oneOf: [{$ref: '#/components/schemas/ExUserBriefVO'}, {type: 'null'}]}
+    UserIdVO: {type: object, properties: {userId: {type: integer, format: int32}}}
+    EventIdVO: {type: object, properties: {eventId: {type: integer, format: int32}}}
+    TrackIdVO: {type: object, properties: {trackId: {type: integer, format: int32}}}
+    PhaseIdVO: {type: object, properties: {phaseId: {type: integer, format: int32}}}
+    TeamIdVO:
+      type: object
+      properties:
+        teamId: {type: integer, format: int32}
+        inviteCode: {type: string, description: 创建时生成的12位私密邀请码}
+    DimensionIdVO: {type: object, properties: {dimensionId: {type: integer, format: int32}}}
+    FlagIdVO:
+      type: object
+      properties:
+        flagId: {type: integer, format: int32}
+        supplementEnd: {$ref: '#/components/schemas/LocalDateTime'}
+    EventBriefVO:
+      type: object
+      properties:
+        eventId: {type: integer, format: int32}
+        name: {type: string}
+        status: {$ref: '#/components/schemas/EventStatus'}
+        regBeg: {$ref: '#/components/schemas/LocalDateTime'}
+        regEnd: {$ref: '#/components/schemas/LocalDateTime'}
+        liveBeg: {$ref: '#/components/schemas/LocalDateTime'}
+        liveEnd: {$ref: '#/components/schemas/LocalDateTime'}
+        tags: {type: [string, 'null']}
+    TrackBriefVO:
+      type: object
+      properties:
+        trackId: {type: integer, format: int32}
+        name: {type: string}
+    EventInfoVO:
+      type: object
+      properties:
+        eventId: {type: integer, format: int32}
+        name: {type: string}
+        status: {$ref: '#/components/schemas/EventStatus'}
+        regBeg: {$ref: '#/components/schemas/LocalDateTime'}
+        regEnd: {$ref: '#/components/schemas/LocalDateTime'}
+        liveBeg: {$ref: '#/components/schemas/LocalDateTime'}
+        liveEnd: {$ref: '#/components/schemas/LocalDateTime'}
+        introduction: {type: [string, 'null']}
+        tags: {type: [string, 'null']}
+        notice: {type: [string, 'null']}
+        teamMinSize: {type: integer, minimum: 1}
+        teamMaxSize: {type: integer, minimum: 1}
+        tracks: {type: array, items: {$ref: '#/components/schemas/TrackBriefVO'}}
+        version: {type: integer, format: int32}
+    PhaseBriefVO:
+      type: object
+      properties:
+        phaseId: {type: integer, format: int32}
+        name: {type: string}
+        status: {$ref: '#/components/schemas/PhaseStatus'}
+        submitBeg: {$ref: '#/components/schemas/LocalDateTime'}
+        submitEnd: {$ref: '#/components/schemas/LocalDateTime'}
+        reviewBeg: {$ref: '#/components/schemas/LocalDateTime'}
+        reviewEnd: {$ref: '#/components/schemas/LocalDateTime'}
+    TrackInfoVO:
+      type: object
+      properties:
+        trackId: {type: integer, format: int32}
+        name: {type: string}
+        descMd: {type: string}
+        phases: {type: array, items: {$ref: '#/components/schemas/PhaseBriefVO'}}
+        version: {type: integer, format: int32}
+        eventId: {type: integer, format: int32}
+        eventName: {type: string}
+    PhaseActiveVO:
+      type: object
+      properties:
+        existed: {type: boolean, description: false 表示当前没有进行中的轮次}
+        phaseId: {type: [integer, 'null'], format: int32}
+        name: {type: [string, 'null']}
+        submitBeg: {oneOf: [{$ref: '#/components/schemas/LocalDateTime'}, {type: 'null'}]}
+        submitEnd: {oneOf: [{$ref: '#/components/schemas/LocalDateTime'}, {type: 'null'}]}
+        reviewBeg: {oneOf: [{$ref: '#/components/schemas/LocalDateTime'}, {type: 'null'}]}
+        reviewEnd: {oneOf: [{$ref: '#/components/schemas/LocalDateTime'}, {type: 'null'}]}
+        status: {oneOf: [{$ref: '#/components/schemas/PhaseStatus'}, {type: 'null'}]}
+        leftDays: {type: [integer, 'null'], format: int64}
+        leftHours: {type: [integer, 'null'], format: int32}
+        leftMinutes: {type: [integer, 'null'], format: int32}
+    SubmissionConfig:
+      type: object
+      properties:
+        repository: {type: boolean, default: false}
+        openSource: {type: boolean, default: false}
+        licenseType: {type: [string, 'null']}
+        zip: {type: boolean, default: false}
+        maxSizeMB: {type: [integer, 'null'], format: int32}
+        video: {type: boolean, default: false}
+        videoMaxSizeMB: {type: [integer, 'null'], format: int32}
+        powerpoint: {type: boolean, default: false}
+        website: {type: boolean, default: false}
+        markdown: {type: boolean, default: false}
+        declare: {type: boolean, default: false}
+    PhaseInfoVO:
+      type: object
+      properties:
+        phaseId: {type: integer, format: int32}
+        name: {type: string}
+        submitBeg: {$ref: '#/components/schemas/LocalDateTime'}
+        submitEnd: {$ref: '#/components/schemas/LocalDateTime'}
+        reviewBeg: {$ref: '#/components/schemas/LocalDateTime'}
+        reviewEnd: {$ref: '#/components/schemas/LocalDateTime'}
+        blindReview: {type: boolean}
+        midCheck: {type: boolean}
+        poll: {type: boolean}
+        pollBeg: {oneOf: [{$ref: '#/components/schemas/LocalDateTime'}, {type: 'null'}]}
+        pollEnd: {oneOf: [{$ref: '#/components/schemas/LocalDateTime'}, {type: 'null'}]}
+        pollDailyCap: {type: [integer, 'null'], format: int32, description: 为空时后端按每日 3 票执行}
+        submissionConfig: {$ref: '#/components/schemas/SubmissionConfig'}
+        trackId: {type: integer, format: int32}
+        trackName: {type: string}
+        eventId: {type: integer, format: int32}
+        eventName: {type: string}
+        version: {type: integer, format: int32}
+    RegistrationVO:
+      type: object
+      properties:
+        registered: {type: boolean}
+        trackId: {type: [integer, 'null'], format: int32}
+        teamId: {type: [integer, 'null'], format: int32, description: 未组队时为空}
+        version: {type: [integer, 'null'], format: int32}
+    TeamMemberVO:
+      type: object
+      properties:
+        userId: {type: integer, format: int32}
+        name: {type: string}
+        casId: {type: [string, 'null']}
+        campus: {type: [string, 'null']}
+        major: {type: [string, 'null']}
+        tags: {type: array, items: {type: string}}
+        leader: {type: boolean}
+    TeamInfoVO:
+      type: object
+      properties:
+        teamId: {type: integer, format: int32}
+        name: {type: string}
+        eventId: {type: integer, format: int32}
+        eventName: {type: string}
+        trackId: {type: integer, format: int32}
+        trackName: {type: string}
+        size: {type: integer, format: int32}
+        introduction: {type: [string, 'null']}
+        type: {$ref: '#/components/schemas/TeamType'}
+        inviteCode: {type: string, description: 仅队员和赛事管理员可见}
+        version: {type: integer, format: int32}
+        members: {type: array, items: {$ref: '#/components/schemas/TeamMemberVO'}}
+    RecruitmentVO:
+      type: object
+      properties:
+        recruitmentId: {type: integer, format: int32}
+        teamId: {type: integer, format: int32}
+        teamName: {type: string}
+        eventId: {type: integer, format: int32}
+        trackId: {type: integer, format: int32}
+        trackName: {type: string}
+        currentSize: {type: integer}
+        maxSize: {type: integer}
+        title: {type: string}
+        description: {type: [string, 'null']}
+        requiredTags: {type: array, items: {type: string}}
+        vacancies: {type: integer}
+        open: {type: boolean}
+        version: {type: integer}
+        updateTime: {$ref: '#/components/schemas/LocalDateTime'}
+    TeamApplicationVO:
+      type: object
+      properties:
+        applicationId: {type: integer, format: int32}
+        recruitmentId: {type: integer, format: int32}
+        teamId: {type: integer, format: int32}
+        userId: {type: integer, format: int32}
+        userName: {type: string}
+        campus: {type: string}
+        major: {type: string}
+        tags: {type: array, items: {type: string}}
+        status: {$ref: '#/components/schemas/TeamFlowStatus'}
+        updateTime: {$ref: '#/components/schemas/LocalDateTime'}
+    TeamInvitationVO:
+      type: object
+      properties:
+        invitationId: {type: integer, format: int32}
+        teamId: {type: integer, format: int32}
+        teamName: {type: string}
+        eventId: {type: integer, format: int32}
+        eventName: {type: string}
+        trackId: {type: integer, format: int32}
+        trackName: {type: string}
+        inviterId: {type: integer, format: int32}
+        inviterName: {type: string}
+        status: {$ref: '#/components/schemas/TeamFlowStatus'}
+        updateTime: {$ref: '#/components/schemas/LocalDateTime'}
+    RecommendationVO:
+      type: object
+      properties:
+        recommendationId: {type: integer, format: int32}
+        eventId: {type: integer, format: int32}
+        trackId: {type: integer, format: int32}
+        trackName: {type: string}
+        userId: {type: integer, format: int32}
+        userName: {type: string}
+        campus: {type: string}
+        major: {type: string}
+        profileTags: {type: array, items: {type: string}}
+        introduction: {type: string}
+        skills: {type: array, items: {type: string}}
+        version: {type: integer}
+        updateTime: {$ref: '#/components/schemas/LocalDateTime'}
+    TeamBriefVO:
+      type: object
+      properties:
+        teamId: {type: integer, format: int32}
+        name: {type: string}
+        trackId: {type: integer, format: int32}
+        trackName: {type: string}
+        leaderId: {type: integer, format: int32}
+        leaderName: {type: string}
+        size: {type: integer}
+        type: {$ref: '#/components/schemas/TeamType'}
+        status: {$ref: '#/components/schemas/TeamStatus'}
+        updateTime: {$ref: '#/components/schemas/LocalDateTime'}
+    FileInfoVO:
+      type: object
+      properties:
+        fileId: {type: integer, format: int64}
+        scope: {$ref: '#/components/schemas/FileScope'}
+        originName: {type: string}
+        contentType: {type: string}
+        sizeBytes: {type: integer, format: int64}
+        status: {$ref: '#/components/schemas/FileStatus'}
+        createTime: {$ref: '#/components/schemas/LocalDateTime'}
+    SubmissionInfoVO:
+      type: object
+      description: 尚未提交时，仅 config 与轮次/队伍上下文等字段有值，作品内容字段可为空。
+      properties:
+        submissionId: {type: [integer, 'null'], format: int32}
+        phaseId: {type: integer, format: int32}
+        phaseName: {type: string}
+        teamId: {type: integer, format: int32}
+        teamName: {type: string}
+        config: {$ref: '#/components/schemas/SubmissionConfig'}
+        submitBeg: {$ref: '#/components/schemas/LocalDateTime'}
+        submitEnd: {$ref: '#/components/schemas/LocalDateTime'}
+        editable: {type: boolean}
+        status: {oneOf: [{$ref: '#/components/schemas/SubmissionStatus'}, {type: 'null'}]}
+        versionNo: {type: [integer, 'null'], format: int32}
+        submitterId: {type: [integer, 'null'], format: int32}
+        submitterName: {type: [string, 'null']}
+        submitTime: {oneOf: [{$ref: '#/components/schemas/LocalDateTime'}, {type: 'null'}]}
+        repoUrl: {type: [string, 'null']}
+        licenseType: {type: [string, 'null']}
+        derivedFrom: {type: [string, 'null']}
+        archiveFileId: {type: [integer, 'null'], format: int64}
+        archive: {oneOf: [{$ref: '#/components/schemas/FileInfoVO'}, {type: 'null'}]}
+        videoFileId: {type: [integer, 'null'], format: int64}
+        video: {oneOf: [{$ref: '#/components/schemas/FileInfoVO'}, {type: 'null'}]}
+        videoUrl: {type: [string, 'null']}
+        docFileId: {type: [integer, 'null'], format: int64}
+        doc: {oneOf: [{$ref: '#/components/schemas/FileInfoVO'}, {type: 'null'}]}
+        demoUrl: {type: [string, 'null']}
+        introMd: {type: [string, 'null']}
+        declaration: {type: [string, 'null']}
+        version: {type: [integer, 'null'], format: int32}
+    SubmissionIdVO:
+      type: object
+      properties:
+        submissionId: {type: integer, format: int32}
+        versionNo: {type: integer, format: int32}
+    SubmissionSnapshot:
+      type: object
+      properties:
+        repoUrl: {type: [string, 'null']}
+        licenseType: {type: [string, 'null']}
+        derivedFrom: {type: [string, 'null']}
+        archiveFileId: {type: [integer, 'null'], format: int64}
+        videoFileId: {type: [integer, 'null'], format: int64}
+        videoUrl: {type: [string, 'null']}
+        docFileId: {type: [integer, 'null'], format: int64}
+        demoUrl: {type: [string, 'null']}
+        introMd: {type: [string, 'null']}
+        declaration: {type: [string, 'null']}
+    SubmissionVersionBriefVO:
+      type: object
+      properties:
+        versionNo: {type: integer, format: int32}
+        submitterId: {type: integer, format: int32}
+        submitterName: {type: string}
+        submitTime: {$ref: '#/components/schemas/LocalDateTime'}
+        changeLog: {type: [string, 'null']}
+    SubmissionVersionVO:
+      type: object
+      properties:
+        submissionId: {type: integer, format: int32}
+        versionNo: {type: integer, format: int32}
+        submitterId: {type: integer, format: int32}
+        submitterName: {type: string}
+        submitTime: {$ref: '#/components/schemas/LocalDateTime'}
+        changeLog: {type: [string, 'null']}
+        snapshot: {$ref: '#/components/schemas/SubmissionSnapshot'}
+    DimensionVO:
+      type: object
+      properties:
+        dimensionId: {type: integer, format: int32}
+        name: {type: string}
+        description: {type: [string, 'null']}
+        maxScore: {type: number}
+        weight: {type: number}
+        sortNo: {type: integer, format: int32}
+        version: {type: integer, format: int32}
+    AssignResultVO:
+      type: object
+      properties:
+        created: {type: integer, format: int32}
+        skipped: {type: integer, format: int32}
+        skippedReasons: {type: array, items: {type: string}}
+    RecuseResultVO:
+      type: object
+      properties:
+        recusedAssignmentId: {type: integer, format: int32}
+        newAssignmentId: {type: [integer, 'null'], format: int32}
+        newJudgeId: {type: [integer, 'null'], format: int32}
+        newJudgeName: {type: [string, 'null']}
+        message: {type: string}
+    ReviewTaskVO:
+      type: object
+      properties:
+        assignmentId: {type: integer, format: int32}
+        submissionId: {type: integer, format: int32}
+        phaseId: {type: integer, format: int32}
+        teamId: {type: integer, format: int32}
+        teamName: {type: string, description: 盲审轮次下为随机编号}
+        status: {$ref: '#/components/schemas/ReviewStatus'}
+        source: {$ref: '#/components/schemas/AssignSource'}
+        submissionStatus: {$ref: '#/components/schemas/SubmissionStatus'}
+        versionNo: {type: integer, format: int32}
+        submitTime: {$ref: '#/components/schemas/LocalDateTime'}
+        totalScore: {type: [number, 'null']}
+        scoreTime: {oneOf: [{$ref: '#/components/schemas/LocalDateTime'}, {type: 'null'}]}
+        urgeCount: {type: integer, format: int32}
+        lastUrgeTime: {oneOf: [{$ref: '#/components/schemas/LocalDateTime'}, {type: 'null'}]}
+        openFlagCount: {type: integer, format: int32}
+    ReviewScoreVO:
+      type: object
+      properties:
+        dimensionId: {type: integer, format: int32}
+        name: {type: string}
+        maxScore: {type: number}
+        weight: {type: number}
+        score: {type: number}
+        comment: {type: [string, 'null']}
+    ReviewFlagVO:
+      type: object
+      properties:
+        flagId: {type: integer, format: int32}
+        submissionId: {type: integer, format: int32}
+        target: {$ref: '#/components/schemas/FlagTarget'}
+        description: {type: string}
+        status: {$ref: '#/components/schemas/FlagStatus'}
+        judgeId: {type: integer, format: int32}
+        judgeName: {type: [string, 'null'], description: 盲审视角下不下发}
+        supplementEnd: {$ref: '#/components/schemas/LocalDateTime'}
+        supplementOpenTime: {$ref: '#/components/schemas/LocalDateTime'}
+        windowOpen: {type: boolean}
+        resolvedVersionNo: {type: [integer, 'null'], format: int32}
+        resolveTime: {oneOf: [{$ref: '#/components/schemas/LocalDateTime'}, {type: 'null'}]}
+        closeReason: {type: [string, 'null']}
+        createTime: {$ref: '#/components/schemas/LocalDateTime'}
+        version: {type: integer, format: int32}
+    ReviewWorkVO:
+      type: object
+      properties:
+        assignmentId: {type: [integer, 'null'], format: int32}
+        status: {oneOf: [{$ref: '#/components/schemas/ReviewStatus'}, {type: 'null'}]}
+        blind: {type: boolean}
+        submission: {$ref: '#/components/schemas/SubmissionInfoVO'}
+        members: {type: array, items: {$ref: '#/components/schemas/TeamMemberVO'}, description: 盲审时不下发}
+        dimensions: {type: array, items: {$ref: '#/components/schemas/DimensionVO'}}
+        scores: {type: array, items: {$ref: '#/components/schemas/ReviewScoreVO'}}
+        totalScore: {type: [number, 'null']}
+        comment: {type: [string, 'null']}
+        scoreTime: {oneOf: [{$ref: '#/components/schemas/LocalDateTime'}, {type: 'null'}]}
+        flags: {type: array, items: {$ref: '#/components/schemas/ReviewFlagVO'}}
+        scorable: {type: boolean}
+        version: {type: [integer, 'null'], format: int32}
+    PreviewItemVO:
+      type: object
+      properties:
+        fileId: {type: integer, format: int64}
+        name: {type: string}
+        contentType: {type: string}
+        sizeBytes: {type: integer, format: int64}
+        url: {type: string, format: uri}
+        expiresAt: {$ref: '#/components/schemas/LocalDateTime'}
+    ReviewPreviewVO:
+      type: object
+      properties:
+        submissionId: {type: integer, format: int32}
+        doc: {oneOf: [{$ref: '#/components/schemas/PreviewItemVO'}, {type: 'null'}]}
+        video: {oneOf: [{$ref: '#/components/schemas/PreviewItemVO'}, {type: 'null'}]}
+        videoUrl: {type: [string, 'null']}
+        archive: {oneOf: [{$ref: '#/components/schemas/PreviewItemVO'}, {type: 'null'}]}
+        demoUrl: {type: [string, 'null']}
+        repoUrl: {type: [string, 'null']}
+    JudgeProgressVO:
+      type: object
+      properties:
+        judgeId: {type: integer, format: int32}
+        judgeName: {type: string}
+        total: {type: integer, format: int32}
+        done: {type: integer, format: int32}
+        pending: {type: integer, format: int32}
+        recused: {type: integer, format: int32}
+        transferred: {type: integer, format: int32}
+        progress: {type: string, example: 8/10}
+        overdue: {type: boolean}
+        urgeCount: {type: integer, format: int32}
+        lastUrgeTime: {oneOf: [{$ref: '#/components/schemas/LocalDateTime'}, {type: 'null'}]}
+        pendingAssignmentIds: {type: array, items: {type: integer, format: int32}}
+    PhaseProgressVO:
+      type: object
+      properties:
+        phaseId: {type: integer, format: int32}
+        phaseName: {type: string}
+        reviewBeg: {$ref: '#/components/schemas/LocalDateTime'}
+        reviewEnd: {$ref: '#/components/schemas/LocalDateTime'}
+        reviewClosed: {type: boolean}
+        judgeCount: {type: integer, format: int32}
+        totalTask: {type: integer, format: int32}
+        doneTask: {type: integer, format: int32}
+        pendingTask: {type: integer, format: int32}
+        judges: {type: array, items: {$ref: '#/components/schemas/JudgeProgressVO'}}
+    UrgeResultVO:
+      type: object
+      properties:
+        judgeCount: {type: integer, format: int32}
+        pendingTask: {type: integer, format: int32}
+    JudgeScoreVO:
+      type: object
+      properties:
+        assignmentId: {type: integer, format: int32}
+        judgeId: {type: integer, format: int32}
+        judgeName: {type: string}
+        totalScore: {type: number}
+        submitTime: {$ref: '#/components/schemas/LocalDateTime'}
+        counted: {type: boolean}
+        excludeReason: {type: [string, 'null'], description: 最高分或最低分}
+    SubmissionResultVO:
+      type: object
+      properties:
+        submissionId: {type: integer, format: int32}
+        teamId: {type: integer, format: int32}
+        teamName: {type: string}
+        assignedCount: {type: integer, format: int32}
+        scoredCount: {type: integer, format: int32}
+        trimmed: {type: boolean, description: 评委数不少于 5 时是否触发去极值}
+        rule: {type: string}
+        finalScore: {type: [number, 'null']}
+        judgeScores: {type: array, items: {$ref: '#/components/schemas/JudgeScoreVO'}}
+    UploadVO:
+      type: object
+      properties:
+        fileId: {type: integer, format: int64}
+        uploadUrl: {type: string, format: uri, description: 对象存储预签名 PUT 地址}
+        contentType: {type: string}
+        maxSizeBytes: {type: integer, format: int64}
+        expiresAt: {$ref: '#/components/schemas/LocalDateTime'}
+    FileUrlVO:
+      type: object
+      properties:
+        url: {type: string, format: uri}
+        expiresAt: {$ref: '#/components/schemas/LocalDateTime'}
+    VoteCastVO:
+      type: object
+      properties:
+        submissionId: {type: integer, format: int32}
+        totalVotes: {type: integer, format: int64}
+        todayUsed: {type: integer, format: int32}
+        todayRemaining: {type: integer, format: int32}
+    VoteRankVO:
+      type: object
+      properties:
+        rank: {type: integer, format: int32}
+        submissionId: {type: integer, format: int32}
+        teamId: {type: integer, format: int32}
+        teamName: {type: string}
+        voteCount: {type: integer, format: int64}
+        voted: {type: [boolean, 'null'], description: 匿名访问时为空}
+    VoteStatusVO:
+      type: object
+      properties:
+        phaseId: {type: integer, format: int32}
+        poll: {type: boolean}
+        dailyCap: {type: integer, format: int32, description: 未开启投票时为 0}
+        todayUsed: {type: integer, format: int32}
+        todayRemaining: {type: integer, format: int32}
+        votedSubmissionIds: {type: array, items: {type: integer, format: int32}}
+    NotificationVO:
+      type: object
+      properties:
+        notificationId: {type: integer, format: int64}
+        type: {$ref: '#/components/schemas/NoticeType'}
+        title: {type: string}
+        content: {type: string}
+        eventId: {type: [integer, 'null'], format: int32}
+        phaseId: {type: [integer, 'null'], format: int32}
+        submissionId: {type: [integer, 'null'], format: int32}
+        refId: {type: [integer, 'null'], format: int32}
+        readFlag: {type: boolean}
+        createTime: {$ref: '#/components/schemas/LocalDateTime'}
+
+    UserPage:
+      type: object
+      properties:
+        records: {type: array, items: {$ref: '#/components/schemas/UserBriefVO'}}
+        total: {type: integer, format: int64}
+        size: {type: integer, format: int64}
+        current: {type: integer, format: int64}
+        pages: {type: integer, format: int64}
+    EventPage:
+      type: object
+      properties:
+        records: {type: array, items: {$ref: '#/components/schemas/EventBriefVO'}}
+        total: {type: integer, format: int64}
+        size: {type: integer, format: int64}
+        current: {type: integer, format: int64}
+        pages: {type: integer, format: int64}
+    RecruitmentPage:
+      type: object
+      properties:
+        records: {type: array, items: {$ref: '#/components/schemas/RecruitmentVO'}}
+        total: {type: integer, format: int64}
+        size: {type: integer, format: int64}
+        current: {type: integer, format: int64}
+        pages: {type: integer, format: int64}
+    RecommendationPage:
+      type: object
+      properties:
+        records: {type: array, items: {$ref: '#/components/schemas/RecommendationVO'}}
+        total: {type: integer, format: int64}
+        size: {type: integer, format: int64}
+        current: {type: integer, format: int64}
+        pages: {type: integer, format: int64}
+    TeamPage:
+      type: object
+      properties:
+        records: {type: array, items: {$ref: '#/components/schemas/TeamBriefVO'}}
+        total: {type: integer, format: int64}
+        size: {type: integer, format: int64}
+        current: {type: integer, format: int64}
+        pages: {type: integer, format: int64}
+    NotificationPage:
+      type: object
+      properties:
+        records: {type: array, items: {$ref: '#/components/schemas/NotificationVO'}}
+        total: {type: integer, format: int64}
+        size: {type: integer, format: int64}
+        current: {type: integer, format: int64}
+        pages: {type: integer, format: int64}
+
+    ResultBase:
+      type: object
+      required: [code, data, msg]
+      properties:
+        code: {type: integer, format: int32, description: 成功为 200，失败为业务状态码}
+        data: {}
+        msg: {type: string}
+    VoidResult:
+      allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {type: 'null'}}}]
+      example: {code: 200, data: null, msg: 成功}
+    ErrorResult:
+      allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {type: 'null'}}}]
+    StringResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {type: string}}}]}
+    IntegerResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {type: integer, format: int32}}}]}
+    LongResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {type: integer, format: int64}}}]}
+    DecimalResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {type: number}}}]}
+    LoginResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/LoginVO'}}}]}
+    ExUserInfoResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/ExUserInfoVO'}}}]}
+    UserInfoResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/UserInfoVO'}}}]}
+    UserIdResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/UserIdVO'}}}]}
+    UserPageResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/UserPage'}}}]}
+    CreateStudentResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/CreateStudentVO'}}}]}
+    StudentTagsResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/StudentTagsVO'}}}]}
+    StudentInfoResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/StudentInfoVO'}}}]}
+    AuthorityUserListResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/AuthorityUserVO'}}}}]}
+    AuthorityEventListResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/AuthorityEventVO'}}}}]}
+    EventIdResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/EventIdVO'}}}]}
+    TrackIdResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/TrackIdVO'}}}]}
+    EventInfoResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/EventInfoVO'}}}]}
+    EventPageResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/EventPage'}}}]}
+    TrackInfoResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/TrackInfoVO'}}}]}
+    PhaseActiveResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/PhaseActiveVO'}}}]}
+    PhaseIdResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/PhaseIdVO'}}}]}
+    PhaseInfoResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/PhaseInfoVO'}}}]}
+    RegistrationResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/RegistrationVO'}}}]}
+    TeamIdResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/TeamIdVO'}}}]}
+    TeamInfoResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/TeamInfoVO'}}}]}
+    TeamInvitationListResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/TeamInvitationVO'}}}}]}
+    TeamApplicationListResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/TeamApplicationVO'}}}}]}
+    RecruitmentPageResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/RecruitmentPage'}}}]}
+    RecommendationPageResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/RecommendationPage'}}}]}
+    TeamPageResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/TeamPage'}}}]}
+    SubmissionInfoResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/SubmissionInfoVO'}}}]}
+    SubmissionIdResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/SubmissionIdVO'}}}]}
+    SubmissionVersionListResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/SubmissionVersionBriefVO'}}}}]}
+    SubmissionVersionResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/SubmissionVersionVO'}}}]}
+    DimensionListResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/DimensionVO'}}}}]}
+    DimensionIdResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/DimensionIdVO'}}}]}
+    AssignResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/AssignResultVO'}}}]}
+    RecuseResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/RecuseResultVO'}}}]}
+    ReviewTaskListResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/ReviewTaskVO'}}}}]}
+    ReviewWorkResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/ReviewWorkVO'}}}]}
+    ReviewPreviewResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/ReviewPreviewVO'}}}]}
+    FlagIdResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/FlagIdVO'}}}]}
+    ReviewFlagListResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/ReviewFlagVO'}}}}]}
+    PhaseProgressResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/PhaseProgressVO'}}}]}
+    UrgeResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/UrgeResultVO'}}}]}
+    SubmissionResultResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/SubmissionResultVO'}}}]}
+    SubmissionResultListResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/SubmissionResultVO'}}}}]}
+    UploadResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/UploadVO'}}}]}
+    FileInfoResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/FileInfoVO'}}}]}
+    FileUrlResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/FileUrlVO'}}}]}
+    VoteCastResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/VoteCastVO'}}}]}
+    VoteRankListResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/VoteRankVO'}}}}]}
+    VoteStatusResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/VoteStatusVO'}}}]}
+    NotificationPageResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/NotificationPage'}}}]}

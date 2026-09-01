@@ -65,6 +65,14 @@ public class EventController {
         return Result.ok();
     }
 
+    @PutMapping("/{eventId}/team-config")
+    @Require(EVENT_ADMIN)
+    public ResponseEntity<Result<Void>> updateTeamConfig(
+            @RequestBody @Valid UpdateTeamConfigDTO dto, Context ctx) {
+        eventService.updateTeamConfig(dto, ctx);
+        return Result.ok();
+    }
+
     /**
      * 删除赛事
      * @return ok
