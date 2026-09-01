@@ -23,6 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -177,5 +180,25 @@ public class UserService {
         return userMapper.selectPage(new Page<>(param.getPage(), param.getSize()), wrapper)
                 .convert(po -> new UserBriefVO(po.getUserId(), po.getName(),
                 po.getStudentFlag(), po.getPhone(), po.getEmail()));
+    }
+
+    public IPage<UserSearchVO> searchUserPage(QueryUserSearchDTO dto, PageParamDTO param) {
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()
+                .like(User::getName, dto.getUserName().trim())
+                .select(User::getUserId, User::getName, User::getStudentFlag)
+                .orderByAsc(User::getName, User::getUserId);
+        IPage<User> users = userMapper.selectPage(new Page<>(param.getPage(), param.getSize()), wrapper);
+        List<Integer> studentIds = users.getRecords().stream()
+                .filter(user -> Boolean.TRUE.equals(user.getStudentFlag()))
+                .map(User::getUserId).toList();
+        Map<Integer, Student> students = studentIds.isEmpty() ? Map.of() : studentMapper.selectByIds(studentIds)
+                .stream().collect(Collectors.toMap(Student::getUserId, student -> student));
+        return users.convert(user -> {
+            Student student = students.get(user.getUserId());
+            return new UserSearchVO(user.getUserId(), user.getName(), user.getStudentFlag(),
+                    student == null ? null : student.getCampus(),
+                    student == null ? null : student.getMajor(),
+                    student == null ? List.of() : student.getTagsAsList());
+        });
     }
 }

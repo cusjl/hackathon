@@ -9,9 +9,10 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class InviteCandidateVO {
+public class UserSearchVO {
     private Integer userId;
     private String userName;
+    private Boolean studentFlag;
     private String campus;
     private String major;
     private List<String> tags;

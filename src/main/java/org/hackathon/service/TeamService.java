@@ -295,49 +295,6 @@ public class TeamService {
         return invitation.getInvitationId();
     }
 
-    public IPage<InviteCandidateVO> inviteCandidatePage(QueryInviteCandidateDTO dto,
-                                                         PageParamDTO param, Context ctx) {
-        Team team = ctx.team();
-        Event event = eventMapper.selectById(team.getEventId());
-        requireBeforeLive(event);
-        if (team.getSize() >= maxSize(event)) {
-            return new Page<>(param.getPage(), param.getSize());
-        }
-
-        Student leader = studentMapper.selectById(team.getLeaderId());
-        if (leader == null) throw new BusinessException(ResultCode.STUDENT_NOT_EXIST);
-
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()
-                .eq(User::getStudentFlag, true)
-                .like(User::getName, dto.getUserName().trim())
-                .exists("SELECT 1 FROM registration r WHERE r.user_id = user.user_id " +
-                                "AND r.event_id = {0} AND r.track_id = {1} AND r.team_id IS NULL",
-                        team.getEventId(), team.getTrackId())
-                .exists(team.getType() == TeamEnum.SAME_MAJOR,
-                        "SELECT 1 FROM student s WHERE s.user_id = user.user_id AND s.major = {0}",
-                        leader.getMajor())
-                .exists(team.getType() != TeamEnum.CROSS_CAMPUS,
-                        "SELECT 1 FROM student s WHERE s.user_id = user.user_id AND s.campus = {0}",
-                        leader.getCampus())
-                .notExists("SELECT 1 FROM team_invitation ti WHERE ti.team_id = {0} " +
-                                "AND ti.user_id = user.user_id AND ti.status = {1}",
-                        team.getTeamId(), TeamFlowStatus.PENDING.getValue())
-                .select(User::getUserId, User::getName)
-                .orderByAsc(User::getName, User::getUserId);
-
-        IPage<User> users = userMapper.selectPage(new Page<>(param.getPage(), param.getSize()), wrapper);
-        List<Integer> userIds = users.getRecords().stream().map(User::getUserId).toList();
-        Map<Integer, Student> students = userIds.isEmpty() ? Map.of() : studentMapper.selectByIds(userIds)
-                .stream().collect(Collectors.toMap(Student::getUserId, student -> student));
-        return users.convert(user -> {
-            Student student = students.get(user.getUserId());
-            return new InviteCandidateVO(user.getUserId(), user.getName(),
-                    student == null ? null : student.getCampus(),
-                    student == null ? null : student.getMajor(),
-                    student == null ? List.of() : student.getTagsAsList());
-        });
-    }
-
     public List<TeamInvitationVO> invitations(Integer userId) {
         return invitationMapper.selectList(new LambdaQueryWrapper<TeamInvitation>()
                 .eq(TeamInvitation::getUserId, userId).orderByDesc(TeamInvitation::getUpdateTime))

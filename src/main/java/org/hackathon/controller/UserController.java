@@ -104,4 +104,17 @@ public class UserController {
             @RequestBody @Valid QueryUserDTO dto) {
         return Result.success(userService.getUserPage(dto, param), "获取成功");
     }
+
+    /**
+     * 已登录用户按姓名查询用户公开信息
+     * @param param 分页参数
+     * @param dto 姓名查询参数
+     * @return 用户公开信息分页列表
+     */
+    @PostMapping("/search")
+    @Require(LOGGED_IN)
+    public ResponseEntity<Result<IPage<UserSearchVO>>> searchUsers(@Valid PageParamDTO param,
+            @RequestBody @Valid QueryUserSearchDTO dto) {
+        return Result.success(userService.searchUserPage(dto, param), "获取成功");
+    }
 }
