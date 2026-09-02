@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.hackathon.data.dto.PageParamDTO;
 import org.hackathon.data.dto.QueryUserSearchDTO;
+import org.hackathon.data.dto.UpdateContactDTO;
 import org.hackathon.data.po.Student;
 import org.hackathon.data.po.User;
 import org.hackathon.data.vo.UserSearchVO;
@@ -25,6 +26,22 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class UserServiceTest {
+
+    @Test
+    void updatesProfileWhenContactDetailsAreUnchanged() {
+        UserMapper userMapper = mock(UserMapper.class);
+        ExUserMapper exUserMapper = mock(ExUserMapper.class);
+        AuthorityMapper authorityMapper = mock(AuthorityMapper.class);
+        StudentMapper studentMapper = mock(StudentMapper.class);
+        UserService service = new UserService(userMapper, exUserMapper, authorityMapper, studentMapper);
+        User user = new User(101, "张三", null, true, "13800138000", "zhangsan@example.com", null, null);
+        when(userMapper.selectById(101)).thenReturn(user);
+
+        service.updateContact(new UpdateContactDTO("13800138000", "zhangsan@example.com"), 101);
+
+        verify(userMapper, never()).selectCount(any());
+        verify(userMapper).updateById(user);
+    }
 
     @Test
     @SuppressWarnings({"rawtypes", "unchecked"})

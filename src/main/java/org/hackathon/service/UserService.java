@@ -95,10 +95,14 @@ public class UserService {
         if (user == null) {
             throw new BusinessException(ResultCode.USER_NOT_EXIST);
         }
-        verifyPhone(dto.getPhone());
-        user.setPhone(dto.getPhone());
-        verifyEmail(dto.getEmail());
-        user.setEmail(dto.getEmail());
+        if (!dto.getPhone().equals(user.getPhone())) {
+            verifyPhone(dto.getPhone());
+            user.setPhone(dto.getPhone());
+        }
+        if (!dto.getEmail().equals(user.getEmail())) {
+            verifyEmail(dto.getEmail());
+            user.setEmail(dto.getEmail());
+        }
         user.setUpdateTime(LocalDateTime.now());
         userMapper.updateById(user);
     }
