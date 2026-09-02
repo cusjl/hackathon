@@ -122,9 +122,25 @@ public class AuthorityService {
     }
 
     public List<AuthorityEventVO> getAuthorityListByUser(Integer userId) {
-        List<Authority> list = authorityMapper.selectList(
-                new LambdaQueryWrapper<Authority>().eq(Authority::getUserId, userId)
-        );
+        return getAuthorityEventListByUser(userId, null);
+    }
+
+    /**
+     * 查询用户直接拥有赛事管理员权限的赛事，用于管理员进入带 eventId 的管理路由。
+     */
+    public List<AuthorityEventVO> getAdminEventListByUser(Integer userId) {
+        return getAuthorityEventListByUser(userId, AuthorityEnum.ADMIN);
+    }
+
+    private List<AuthorityEventVO> getAuthorityEventListByUser(Integer userId, AuthorityEnum type) {
+        LambdaQueryWrapper<Authority> wrapper = new LambdaQueryWrapper<Authority>()
+                .eq(Authority::getUserId, userId);
+        if (type != null) {
+            wrapper.eq(Authority::getType, type);
+        }
+        List<Authority> list = authorityMapper.selectList(wrapper).stream()
+                .filter(authority -> type == null || authority.getType() == type)
+                .collect(Collectors.toCollection(ArrayList::new));
         list.sort(
                 Comparator.comparingInt(Authority::getTypeValue)
                         .thenComparing(Comparator.comparing(Authority::getCreateTime).reversed())

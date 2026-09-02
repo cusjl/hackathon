@@ -45,6 +45,16 @@ public class AuthorityController {
     }
 
     /**
+     * 查询当前用户担任赛事管理员的赛事
+     * @return 管理赛事简表
+     */
+    @GetMapping("/admin-self")
+    @Require(LOGGED_IN)
+    public ResponseEntity<Result<List<AuthorityEventVO>>> getCurrentAdminEvents(Context ctx) {
+        return Result.success(authorityService.getAdminEventListByUser(ctx.userId()), "获取成功");
+    }
+
+    /**
      * 创建赛管权限
      * @param eventId 赛事id
      * @param dto 用户id

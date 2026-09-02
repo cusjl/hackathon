@@ -244,6 +244,17 @@ paths:
       responses:
         '200': {$ref: '#/components/responses/OkResponse'}
         default: {$ref: '#/components/responses/ErrorResponse'}
+  /authority/admin-self:
+    get:
+      tags: [权限]
+      operationId: getCurrentAdminEvents
+      summary: 查询自己担任赛事管理员的赛事
+      description: 返回当前登录用户直接拥有 ADMIN 权限的赛事及其 eventId；没有赛事管理员权限时返回空数组。超级管理员是全局权限，不会在此接口中展开为全部赛事。
+      security: [{bearerAuth: []}]
+      x-required-roles: [LOGGED_IN]
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/AuthorityEventListResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
   /authority/admin/{eventId}:
     parameters:
       - {$ref: '#/components/parameters/EventId'}
