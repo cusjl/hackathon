@@ -540,6 +540,21 @@ paths:
         '200': {$ref: '#/components/responses/OkResponse'}
         default: {$ref: '#/components/responses/ErrorResponse'}
 
+  /registration/list:
+    get:
+      tags: [报名]
+      operationId: getRegisteredEventPage
+      summary: 分页获取当前学生已报名的赛事
+      description: 仅返回当前学生存在报名记录的赛事摘要，按报名记录最近更新时间倒序。
+      security: [{bearerAuth: []}]
+      x-required-roles: [STUDENT]
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/EventPageResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
+
   /registration/{id}:
     parameters:
       - {name: id, in: path, required: true, schema: {type: integer, format: int32, minimum: 1}, description: POST 时为赛道 ID；GET、PUT、DELETE 时为赛事 ID}

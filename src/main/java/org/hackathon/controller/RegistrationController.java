@@ -1,8 +1,11 @@
 package org.hackathon.controller;
 
 import jakarta.validation.Valid;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import lombok.RequiredArgsConstructor;
+import org.hackathon.data.dto.PageParamDTO;
 import org.hackathon.data.dto.UpdateRegistrationDTO;
+import org.hackathon.data.vo.EventBriefVO;
 import org.hackathon.data.vo.RegistrationVO;
 import org.hackathon.data.vo.Result;
 import org.hackathon.security.Context;
@@ -39,6 +42,18 @@ public class RegistrationController {
     @Require(STUDENT)
     public ResponseEntity<Result<RegistrationVO>> getRegistration(Context ctx) {
         return Result.success(regService.getRegistration(ctx), "获取成功");
+    }
+
+    /**
+     * 分页获取当前学生已报名的赛事。
+     *
+     * @return 已报名赛事摘要，按报名记录最近更新时间倒序
+     */
+    @GetMapping("/list")
+    @Require(STUDENT)
+    public ResponseEntity<Result<IPage<EventBriefVO>>> getRegisteredEventPage(
+            @Valid PageParamDTO param, Context ctx) {
+        return Result.success(regService.getRegisteredEventPage(param, ctx), "获取成功");
     }
 
     /**

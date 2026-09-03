@@ -1,27 +1,37 @@
 package org.hackathon.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.hackathon.security.Context;
+import org.hackathon.data.dto.PageParamDTO;
 import org.hackathon.data.dto.UpdateRegistrationDTO;
 import org.hackathon.data.enums.EventStatus;
 import org.hackathon.data.enums.ResultCode;
 import org.hackathon.data.po.Event;
 import org.hackathon.data.po.Registration;
 import org.hackathon.data.po.Track;
+import org.hackathon.data.vo.EventBriefVO;
 import org.hackathon.data.vo.RegistrationVO;
 import org.hackathon.exception.BusinessException;
+import org.hackathon.mapper.EventMapper;
 import org.hackathon.mapper.RegistrationMapper;
 import org.hackathon.mapper.TrackMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class RegistrationService {
     private final RegistrationMapper regMapper;
     private final TrackMapper trackMapper;
+    private final EventMapper eventMapper;
 
     public void createRegistration(Context ctx) {
         Integer userId = ctx.userId();
@@ -54,6 +64,34 @@ public class RegistrationService {
             return new RegistrationVO(false, null, null, null);
         }
         return new RegistrationVO(true, po.getTrackId(), po.getTeamId(), po.getVersion());
+    }
+
+    public IPage<EventBriefVO> getRegisteredEventPage(PageParamDTO param, Context ctx) {
+        Page<Registration> registrationPage = regMapper.selectPage(
+                new Page<>(param.getPage(), param.getSize()),
+                new LambdaQueryWrapper<Registration>()
+                        .eq(Registration::getUserId, ctx.userId())
+                        .orderByDesc(Registration::getUpdateTime)
+                        .select(Registration::getEventId)
+        );
+        if (registrationPage.getRecords().isEmpty()) {
+            return new Page<>(param.getPage(), param.getSize(), registrationPage.getTotal());
+        }
+
+        List<Integer> eventIds = registrationPage.getRecords().stream()
+                .map(Registration::getEventId).toList();
+        Map<Integer, Event> eventsById = eventMapper.selectList(
+                new LambdaQueryWrapper<Event>().in(Event::getEventId, eventIds)
+        ).stream().collect(Collectors.toMap(Event::getEventId, Function.identity()));
+        List<EventBriefVO> records = registrationPage.getRecords().stream()
+                .map(Registration::getEventId)
+                .map(eventsById::get)
+                .map(event -> new EventBriefVO(event.getEventId(), event.getName(), event.getStatus(),
+                        event.getRegBeg(), event.getRegEnd(), event.getLiveBeg(), event.getLiveEnd(), event.getTags()))
+                .toList();
+
+        return new Page<EventBriefVO>(param.getPage(), param.getSize(), registrationPage.getTotal())
+                .setRecords(records);
     }
 
     private Registration verifyCondition(Integer userId, Event event) {
