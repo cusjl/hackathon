@@ -94,10 +94,11 @@ public enum ResultCode {
     ALREADY_TEAMED(3103, HttpStatus.CONFLICT, "请先退出队伍"),
     NOT_REGISTERED(3104, HttpStatus.CONFLICT, "暂未报名该赛道"),
     //311X   组队
+    TEAM_CAMPUS_CONFLICT(3110, HttpStatus.CONFLICT, "与队伍校区协同规则冲突"),
     EVENT_ALREADY_LIVE(3111, HttpStatus.CONFLICT, "赛事已开始"),
     TEAM_NAME_CONFLICT(3112, HttpStatus.CONFLICT, "队伍名已存在"),
     TEAM_NOT_FOUND(3113, HttpStatus.NOT_FOUND, "队伍不存在"),
-    TEAM_TYPE_CONFLICT(3114, HttpStatus.CONFLICT, "与队伍协同标签冲突"),
+    TEAM_MAJOR_CONFLICT(3114, HttpStatus.CONFLICT, "与队伍专业协同规则冲突"),
     TEAM_ALREADY_FULL(3115, HttpStatus.CONFLICT, "队伍已满员"),
     LEADER_LEAVING(3116, HttpStatus.CONFLICT, "队长不能离队"),
     NOT_TEAM_MEMBER(3117, HttpStatus.CONFLICT, "选手不在队伍中"),

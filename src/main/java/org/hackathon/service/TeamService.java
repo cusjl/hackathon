@@ -134,13 +134,10 @@ public class TeamService {
     public void updateTeam(UpdateTeamDTO dto, Context ctx) {
         Team team = ctx.team();
         requireBeforeLive(eventMapper.selectById(team.getEventId()));
-        if (team.getSize() > 1 && !dto.getType().equals(TeamEnum.CROSS_CAMPUS)) {
-            List<Student> members = studentMapper.selectByIds(getMemberIds(team.getTeamId()));
-            long campus = members.stream().map(Student::getCampus).distinct().count();
-            long major = members.stream().map(Student::getMajor).distinct().count();
-            if (campus > 1 || (major > 1 && dto.getType().equals(TeamEnum.SAME_MAJOR))) {
-                throw new BusinessException(ResultCode.TEAM_TYPE_CONFLICT);
-            }
+        if (team.getSize() > 1) {
+            TeamJoinUnavailableReason reason = collaborationUnavailableReason(dto.getType(),
+                    studentMapper.selectByIds(getMemberIds(team.getTeamId())));
+            if (reason != null) throw collaborationConflict(reason);
         }
         team.setName(dto.getName());
         team.setIntroduction(dto.getIntroduction());
@@ -187,15 +184,11 @@ public class TeamService {
             throw new BusinessException(ResultCode.TEAM_TRACK_CONFLICT);
         }
         if (registration.getTeamId() != null) throw new BusinessException(ResultCode.ALREADY_TEAMED);
-        Student leader = studentMapper.selectById(team.getLeaderId());
         Student student = studentMapper.selectById(userId);
         if (student == null) throw new BusinessException(ResultCode.STUDENT_NOT_EXIST);
-        if (team.getType() == TeamEnum.SAME_MAJOR && !Objects.equals(student.getMajor(), leader.getMajor())) {
-            throw new BusinessException(ResultCode.TEAM_TYPE_CONFLICT);
-        }
-        if (team.getType() != TeamEnum.CROSS_CAMPUS && !Objects.equals(student.getCampus(), leader.getCampus())) {
-            throw new BusinessException(ResultCode.TEAM_TYPE_CONFLICT);
-        }
+        TeamJoinUnavailableReason reason = collaborationUnavailableReason(team.getType(),
+                studentMapper.selectByIds(getMemberIds(team.getTeamId())), student);
+        if (reason != null) throw collaborationConflict(reason);
     }
 
     @Transactional
@@ -581,6 +574,8 @@ public class TeamService {
         Registration registration = registration(userId, eventId);
         if (registration == null) throw new BusinessException(ResultCode.NOT_REGISTERED);
         if (registration.getTeamId() != null) throw new BusinessException(ResultCode.ALREADY_TEAMED);
+        Student student = studentMapper.selectById(userId);
+        if (student == null) throw new BusinessException(ResultCode.STUDENT_NOT_EXIST);
 
         LambdaQueryWrapper<Team> wrapper = new LambdaQueryWrapper<Team>()
                 .eq(Team::getEventId, eventId)
@@ -590,7 +585,40 @@ public class TeamService {
                 .like(Team::getName, dto.getName().trim())
                 .orderByDesc(Team::getUpdateTime);
         return teamMapper.selectPage(new Page<>(param.getPage(), param.getSize()), wrapper)
-                .convert(this::teamBriefVO);
+                .convert(team -> joinableTeamBriefVO(team, student));
+    }
+
+    private TeamBriefVO joinableTeamBriefVO(Team team, Student student) {
+        TeamBriefVO vo = teamBriefVO(team);
+        TeamJoinUnavailableReason reason = collaborationUnavailableReason(team.getType(),
+                studentMapper.selectByIds(getMemberIds(team.getTeamId())), student);
+        vo.setJoinable(reason == null);
+        vo.setUnavailableReason(reason);
+        return vo;
+    }
+
+    private TeamJoinUnavailableReason collaborationUnavailableReason(TeamEnum type, List<Student> members,
+                                                                       Student... candidates) {
+        if (type == TeamEnum.CROSS_CAMPUS) return null;
+        List<Student> participants = new ArrayList<>(members);
+        participants.addAll(Arrays.asList(candidates));
+        if (participants.size() < 2) return null;
+
+        Student reference = participants.getFirst();
+        if (type == TeamEnum.SAME_MAJOR && participants.stream()
+                .anyMatch(member -> !Objects.equals(reference.getMajor(), member.getMajor()))) {
+            return TeamJoinUnavailableReason.MAJOR_MISMATCH;
+        }
+        if (participants.stream()
+                .anyMatch(member -> !Objects.equals(reference.getCampus(), member.getCampus()))) {
+            return TeamJoinUnavailableReason.CAMPUS_MISMATCH;
+        }
+        return null;
+    }
+
+    private BusinessException collaborationConflict(TeamJoinUnavailableReason reason) {
+        return new BusinessException(reason == TeamJoinUnavailableReason.MAJOR_MISMATCH
+                ? ResultCode.TEAM_MAJOR_CONFLICT : ResultCode.TEAM_CAMPUS_CONFLICT);
     }
 
     private TeamBriefVO teamBriefVO(Team team) {

@@ -54,6 +54,9 @@ public class StudentService {
     public CreateStudentVO createStudent(CreateStudentDTO dto) {
         verifyTags(dto.getTags());
         LocalJwt jwt = localJwtUtils.parseToken(dto.getToken(), LocalJwt.Type.REGISTER);
+        if (jwt.getCasId() == null || jwt.getCasId().length() > 12) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "学号不能超过12位");
+        }
         long count = studentMapper.selectCount(
                 new LambdaQueryWrapper<Student>().eq(Student::getCasId, jwt.getCasId())
         );

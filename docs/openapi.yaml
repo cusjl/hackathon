@@ -179,6 +179,23 @@ paths:
       responses:
         '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/UserPageResult'}}}}
         default: {$ref: '#/components/responses/ErrorResponse'}
+  /user/search:
+    post:
+      tags: [用户]
+      operationId: searchUsers
+      summary: 按姓名搜索用户公开信息
+      description: 面向所有已登录用户的通用搜索，不返回手机号、邮箱等联系方式。
+      security: [{bearerAuth: []}]
+      x-required-roles: [LOGGED_IN]
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/QueryUserSearchDTO'}}}
+      responses:
+        '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/UserSearchPageResult'}}}}
+        default: {$ref: '#/components/responses/ErrorResponse'}
 
   /student:
     post:
@@ -982,7 +999,7 @@ paths:
       tags: [队伍]
       operationId: listJoinableTeamsByName
       summary: 选手按队名分页检索可加入队伍
-      description: 仅返回与当前选手报名赛道一致、状态有效且尚未满员的队伍；实际入队时仍会校验专业和校区限制。
+      description: 仅返回与当前选手报名赛道一致、状态有效且尚未满员的队伍。每条记录会按当前学生与现有成员进行专业/校区兼容性预检：`joinable` 为 false 时，`unavailableReason` 指出冲突字段；入队时仍会重新校验全部条件以防并发状态变化。
       security: [{bearerAuth: []}]
       x-required-roles: [STUDENT]
       parameters:
@@ -1323,8 +1340,9 @@ paths:
       tags: [评审]
       operationId: getSubmissionResult
       summary: 获取单份作品最终得分
+      description: 赛事管理员可查看完整计分明细；作品所属队伍成员仅可查看本队作品的汇总成绩，`judgeScores` 固定为空数组。
       security: [{bearerAuth: []}]
-      x-required-roles: [EVENT_ADMIN]
+      x-required-roles: [EVENT_ADMIN, SUBMISSION_OWNER]
       responses:
         '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/SubmissionResultResult'}}}}
         default: {$ref: '#/components/responses/ErrorResponse'}
@@ -1618,7 +1636,14 @@ components:
       example: '2026-08-30T14:30:00'
     EventStatus: {type: string, enum: [赛前准备, 报名阶段, 赛前休整, 赛事进行, 赛事结束]}
     PhaseStatus: {type: string, enum: [未开始, 正在提交, 提交结束, 正在评审, 已结束]}
-    TeamType: {type: string, enum: [同专业, 跨专业, 跨校区]}
+    TeamType:
+      type: string
+      description: 同专业要求专业和校区均一致；跨专业允许不同专业但要求校区一致；跨校区允许专业和校区均不同。
+      enum: [同专业, 跨专业, 跨校区]
+    TeamJoinUnavailableReason:
+      type: string
+      description: 可加入队伍检索的协同兼容性预检失败字段。
+      enum: [专业不一致, 校区不一致]
     TeamStatus: {type: string, enum: [晋级, 淘汰]}
     AuthorityType: {type: string, enum: [超级管理员, 赛事管理员, 赛事评委]}
     FileScope:
@@ -1637,7 +1662,7 @@ components:
       type: object
       required: [casId, name]
       properties:
-        casId: {type: string, minLength: 1, description: 学号}
+        casId: {type: string, minLength: 1, maxLength: 12, description: 学号；最多 12 位}
         name: {type: string, minLength: 1, description: 姓名}
     LoginDTO:
       type: object
@@ -1655,7 +1680,7 @@ components:
         password: {type: string, format: password, minLength: 6, maxLength: 20, description: 可选；传入时长度为 6 至 20}
         campus: {type: string, enum: [中心校区, 洪家楼校区, 趵突泉校区, 千佛山校区, 软件园校区, 兴隆山校区, 威海校区, 青岛校区]}
         major: {type: string, minLength: 1, maxLength: 50}
-        tags: {type: array, items: {type: string}}
+        tags: {type: array, items: {type: string}, description: 可选标签；值必须先由 GET /student/tags 获取，包含不可用值时返回 1112}
     UpdateStudentDTO:
       type: object
       required: [phone, email, campus, major]
@@ -1665,7 +1690,7 @@ components:
         campus: {type: string, enum: [中心校区, 洪家楼校区, 趵突泉校区, 千佛山校区, 软件园校区, 兴隆山校区, 威海校区, 青岛校区]}
         major: {type: string, minLength: 1, maxLength: 50}
         introduction: {type: string, maxLength: 100}
-        tags: {type: array, items: {type: string}}
+        tags: {type: array, items: {type: string}, description: 可选标签；值必须先由 GET /student/tags 获取，包含不可用值时返回 1112}
     UpdateExUserDTO:
       type: object
       required: [phone, email]
@@ -1700,6 +1725,11 @@ components:
         onlyStudent: {type: boolean, default: false}
         onlyExtern: {type: boolean, default: false}
         onlySuper: {type: boolean, default: false}
+    QueryUserSearchDTO:
+      type: object
+      required: [userName]
+      properties:
+        userName: {type: string, minLength: 1, maxLength: 50, description: 姓名包含匹配}
     UserIdDTO:
       type: object
       required: [userId]
@@ -1979,9 +2009,11 @@ components:
       type: object
       properties:
         token: {type: string, description: ACCESS 类型 JWT}
+        userId: {type: integer, format: int32, description: 当前登录账号的稳定平台用户 ID，可与 TeamMemberVO.userId 比较}
         name: {type: string}
         studentFlag: {type: boolean}
-        casId: {type: [string, 'null']}
+        casId: {type: [string, 'null'], description: 学生的真实统一认证学号；外部账号为 null，不会返回本次登录所用的邮箱或手机号}
+        email: {type: [string, 'null'], format: email, description: 当前登录账号绑定的邮箱}
         authorities: {type: array, items: {$ref: '#/components/schemas/AuthorityEventVO'}}
     CreateStudentVO:
       type: object
@@ -2032,6 +2064,15 @@ components:
         studentFlag: {type: boolean}
         phone: {type: string}
         email: {type: string, format: email}
+    UserSearchVO:
+      type: object
+      properties:
+        userId: {type: integer, format: int32}
+        userName: {type: string}
+        studentFlag: {type: boolean}
+        campus: {type: [string, 'null'], description: 外部用户为空}
+        major: {type: [string, 'null'], description: 外部用户为空}
+        tags: {type: array, items: {type: string}, description: 外部用户为空数组}
     UserInfoVO:
       type: object
       properties:
@@ -2265,6 +2306,12 @@ components:
         maxSize: {type: integer, description: 赛事配置的队伍人数上限}
         type: {$ref: '#/components/schemas/TeamType'}
         status: {$ref: '#/components/schemas/TeamStatus'}
+        joinable:
+          type: [boolean, 'null']
+          description: 仅在 POST /team/events/{eventId}/list 返回；是否通过专业/校区协同兼容性预检
+        unavailableReason:
+          oneOf: [{$ref: '#/components/schemas/TeamJoinUnavailableReason'}, {type: 'null'}]
+          description: 仅在 joinable 为 false 时返回
         updateTime: {$ref: '#/components/schemas/LocalDateTime'}
     FileInfoVO:
       type: object
@@ -2502,7 +2549,7 @@ components:
         trimmed: {type: boolean, description: 评委数不少于 5 时是否触发去极值}
         rule: {type: string}
         finalScore: {type: [number, 'null']}
-        judgeScores: {type: array, items: {$ref: '#/components/schemas/JudgeScoreVO'}}
+        judgeScores: {type: array, description: 仅赛事管理员可见；作品所有者查询时固定为空数组, items: {$ref: '#/components/schemas/JudgeScoreVO'}}
     UploadVO:
       type: object
       properties:
@@ -2559,6 +2606,14 @@ components:
       type: object
       properties:
         records: {type: array, items: {$ref: '#/components/schemas/UserBriefVO'}}
+        total: {type: integer, format: int64}
+        size: {type: integer, format: int64}
+        current: {type: integer, format: int64}
+        pages: {type: integer, format: int64}
+    UserSearchPage:
+      type: object
+      properties:
+        records: {type: array, items: {$ref: '#/components/schemas/UserSearchVO'}}
         total: {type: integer, format: int64}
         size: {type: integer, format: int64}
         current: {type: integer, format: int64}
@@ -2625,6 +2680,7 @@ components:
     UserInfoResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/UserInfoVO'}}}]}
     UserIdResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/UserIdVO'}}}]}
     UserPageResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/UserPage'}}}]}
+    UserSearchPageResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/UserSearchPage'}}}]}
     CreateStudentResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/CreateStudentVO'}}}]}
     StudentTagsResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/StudentTagsVO'}}}]}
     StudentInfoResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/StudentInfoVO'}}}]}
