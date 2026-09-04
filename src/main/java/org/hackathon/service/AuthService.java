@@ -41,18 +41,20 @@ public class AuthService {
         if (jwt.getUserId() == null) {
             throw new BusinessException(ResultCode.NOT_ENROLLED);
         }
+        User user = userMapper.selectById(jwt.getUserId());
         return new LoginVO(
-                localJwtUtils.generateToken(jwt, LocalJwt.Type.ACCESS), jwt.getName(), true,
-                        jwt.getCasId(), authorityService.getAuthorityListByUser(jwt.getUserId())
+                localJwtUtils.generateToken(jwt, LocalJwt.Type.ACCESS), jwt.getUserId(), jwt.getName(), true,
+                jwt.getCasId(), user == null ? null : user.getEmail(),
+                authorityService.getAuthorityListByUser(jwt.getUserId())
         );
     }
 
     public LoginVO localLogin(LoginDTO dto) {
         User user;
+        Student student = null;
         if (dto.getTerm().matches("^\\d{12}$")) {
-            Student student = studentMapper.selectOne(
+            student = studentMapper.selectOne(
                     new LambdaQueryWrapper<Student>().eq(Student::getCasId, dto.getTerm())
-                            .select(Student::getUserId)
             );
             if (student == null) {
                 throw new BusinessException(ResultCode.NOT_ENROLLED);
@@ -76,14 +78,17 @@ public class AuthService {
         if (!BCrypt.checkpw(dto.getPassword(), user.getPassword())) {
             throw new BusinessException(ResultCode.PASSWORD_INCORRECT);
         }
+        if (student == null && user.getStudentFlag()) {
+            student = studentMapper.selectById(user.getUserId());
+        }
         LocalJwt jwt = new LocalJwt();
         jwt.setUserId(user.getUserId());
         jwt.setStudentFlag(user.getStudentFlag());
         jwt.setName(user.getName());
-        jwt.setCasId(user.getStudentFlag() ? dto.getTerm() : null);
+        jwt.setCasId(student == null ? null : student.getCasId());
         String token = localJwtUtils.generateToken(jwt, LocalJwt.Type.ACCESS);
         return new LoginVO(
-                token, jwt.getName(), jwt.getStudentFlag(), jwt.getCasId(),
+                token, jwt.getUserId(), jwt.getName(), jwt.getStudentFlag(), jwt.getCasId(), user.getEmail(),
                 authorityService.getAuthorityListByUser(jwt.getUserId())
         );
     }
