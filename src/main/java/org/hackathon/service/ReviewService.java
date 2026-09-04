@@ -39,6 +39,7 @@ import org.hackathon.mapper.SubmissionMapper;
 import org.hackathon.mapper.TeamMapper;
 import org.hackathon.mapper.UserMapper;
 import org.hackathon.security.Context;
+import org.hackathon.security.Role;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -285,7 +286,12 @@ public class ReviewService {
         Submission submission = ctx.submission();
         List<ReviewAssignment> assignments =
                 assignmentMapper.selectBySubmission(submission.getSubmissionId());
-        return buildResult(submission, ctx.team(), assignments, judgeNames(assignments));
+        SubmissionResultVO result = buildResult(submission, ctx.team(), assignments, judgeNames(assignments));
+        //作品所有者可查询汇总成绩，但评委身份和逐评委打分只供赛事管理员监管。
+        if (!ctx.is(Role.EVENT_ADMIN)) {
+            result.setJudgeScores(List.of());
+        }
+        return result;
     }
 
     /**

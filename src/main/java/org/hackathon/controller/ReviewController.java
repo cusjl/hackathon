@@ -248,11 +248,12 @@ public class ReviewController {
     }
 
     /**
-     * 单份作品的最终得分与计分明细（去极值平均）
+     * 单份作品的最终得分与计分明细（去极值平均）。
+     * 作品所有者只能查看本队作品的汇总成绩，评委身份和逐项得分仅赛事管理员可见。
      * @return 计分结果
      */
     @GetMapping("/submission/{submissionId}/result")
-    @Require(EVENT_ADMIN)
+    @Require({EVENT_ADMIN, SUBMISSION_OWNER})
     public ResponseEntity<Result<SubmissionResultVO>> getResult(Context ctx) {
         return Result.success(reviewService.getResult(ctx), "获取成功");
     }
