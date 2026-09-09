@@ -1778,6 +1778,7 @@ components:
         name: {type: string, minLength: 1}
         descMd: {type: string, minLength: 1}
         version: {type: integer, format: int32}
+        attachmentFileIds: {type: [array, 'null'], items: {type: integer, format: int64}, description: 当前赛题 READY 状态的 TRACK_ATTACHMENT 文件 ID 列表；传入时全量同步，空数组清空附件，省略或 null 保留现有附件}
     CreatePhaseDTO:
       type: object
       required: [name, submitBeg, submitEnd, reviewBeg, reviewEnd]
@@ -2151,6 +2152,19 @@ components:
         version: {type: integer, format: int32}
         eventId: {type: integer, format: int32}
         eventName: {type: string}
+        attachments: {type: array, items: {$ref: '#/components/schemas/TrackAttachmentVO'}, description: 已完成的赛道附件}
+    TrackAttachmentVO:
+      type: object
+      properties:
+        fileId: {type: integer, format: int64}
+        scope: {$ref: '#/components/schemas/FileScope'}
+        originName: {type: string}
+        contentType: {type: string}
+        sizeBytes: {type: integer, format: int64}
+        status: {$ref: '#/components/schemas/FileStatus'}
+        createTime: {$ref: '#/components/schemas/LocalDateTime'}
+        url: {type: string, format: uri}
+        urlExpireAt: {$ref: '#/components/schemas/LocalDateTime'}
     PhaseActiveVO:
       type: object
       properties:

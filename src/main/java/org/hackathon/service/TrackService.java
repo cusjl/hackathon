@@ -20,6 +20,7 @@ import org.hackathon.exception.BusinessException;
 import org.hackathon.mapper.EventMapper;
 import org.hackathon.mapper.PhaseMapper;
 import org.hackathon.mapper.TrackMapper;
+import org.hackathon.mapper.FileObjectMapper;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +29,8 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +38,8 @@ public class TrackService {
     private final EventMapper eventMapper;
     private final TrackMapper trackMapper;
     private final PhaseMapper phaseMapper;
+    private final FileObjectMapper fileObjectMapper;
+    private final StorageService storageService;
 
     public TrackInfoVO getTrack(Context ctx) {
         Track track = ctx.track();
@@ -46,10 +51,21 @@ public class TrackService {
                 po.getSubmitBeg(), po.getSubmitEnd(), po.getReviewBeg(), po.getReviewEnd())).toList();
         return new TrackInfoVO(
                 track.getTrackId(), track.getName(), track.getDescMd(), list, track.getVersion(),
-                track.getEventId(), ctx.event().getName()
+                track.getEventId(), ctx.event().getName(),
+                fileObjectMapper.selectTrackAttachments(track.getTrackId()).stream()
+                        .map(file -> {
+                            var expires = LocalDateTime.now().plusMinutes(file.getScope().getUrlExpireMinutes());
+                            var url = storageService.presignGet(file.getObjectKey(), file.getContentType(),
+                                    file.getOriginName(),
+                                    Duration.ofMinutes(file.getScope().getUrlExpireMinutes()));
+                            return new org.hackathon.data.vo.TrackAttachmentVO(file.getFileId(), file.getScope(),
+                                file.getOriginName(), file.getContentType(), file.getSizeBytes(),
+                                file.getStatus(), file.getCreateTime(), url, expires);
+                        }).toList()
         );
     }
 
+    @Transactional
     public void updateTrack(UpdateTrackDTO dto, Context ctx) {
         Track track = ctx.track();
         if (!track.getVersion().equals(dto.getVersion())) {
@@ -64,6 +80,24 @@ public class TrackService {
         track.setUpdateTime(LocalDateTime.now());
         if (trackMapper.updateById(track) == 0) {
             throw new BusinessException(ResultCode.RESOURCE_UPDATED);
+        }
+        if (dto.getAttachmentFileIds() != null) {
+            Set<Long> keep = new HashSet<>(dto.getAttachmentFileIds());
+            for (Long id : keep) {
+                if (id == null) throw new BusinessException(ResultCode.PARAM_ERROR, "附件 ID 不能为空");
+                var file = fileObjectMapper.selectById(id);
+                if (file == null || file.getTrackId() == null || !track.getTrackId().equals(file.getTrackId())
+                        || file.getScope() != org.hackathon.data.enums.FileScope.TRACK_ATTACHMENT
+                        || file.getStatus() != org.hackathon.data.enums.FileStatus.READY)
+                    throw new BusinessException(ResultCode.FILE_NOT_READY, "附件不属于当前赛题或尚未完成上传");
+            }
+            fileObjectMapper.selectTrackAttachments(track.getTrackId()).stream()
+                    .filter(file -> !keep.contains(file.getFileId()))
+                    .forEach(file -> {
+                        file.setStatus(org.hackathon.data.enums.FileStatus.DELETED);
+                        file.setUpdateTime(LocalDateTime.now());
+                        fileObjectMapper.updateById(file);
+                    });
         }
     }
 

@@ -12,6 +12,14 @@ import java.util.List;
 @Mapper
 public interface FileObjectMapper extends BaseMapper<FileObject> {
 
+    default List<FileObject> selectTrackAttachments(Integer trackId) {
+        return selectList(new LambdaQueryWrapper<FileObject>()
+                .eq(FileObject::getTrackId, trackId)
+                .eq(FileObject::getScope, org.hackathon.data.enums.FileScope.TRACK_ATTACHMENT)
+                .eq(FileObject::getStatus, FileStatus.READY)
+                .orderByDesc(FileObject::getCreateTime));
+    }
+
     default List<FileObject> selectTimeoutFiles(LocalDateTime deadline) {
         return selectList(new LambdaQueryWrapper<FileObject>()
                 .eq(FileObject::getStatus, FileStatus.PENDING)

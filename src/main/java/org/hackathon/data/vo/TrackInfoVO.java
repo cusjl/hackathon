@@ -17,4 +17,5 @@ public class TrackInfoVO {
     private Integer version;
     private Integer eventId;
     private String eventName;
+    private List<TrackAttachmentVO> attachments;
 }
