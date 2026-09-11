@@ -15,6 +15,7 @@ import org.hackathon.data.vo.FileUrlVO;
 import org.hackathon.data.vo.UploadVO;
 import org.hackathon.exception.BusinessException;
 import org.hackathon.mapper.FileObjectMapper;
+import org.hackathon.mapper.ShowcaseProjectMapper;
 import org.hackathon.security.Context;
 import org.hackathon.security.Role;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,7 @@ import java.util.UUID;
 public class FileService {
 
     private final FileObjectMapper fileObjectMapper;
+    private final ShowcaseProjectMapper showcaseProjectMapper;
     private final StorageService storageService;
     private final S3Properties props;
 
@@ -106,22 +108,25 @@ public class FileService {
     }
 
     public FileUrlVO url(Long fileId, boolean download, Context ctx) {
-        FileObject file = mustReadable(fileId, ctx);
+        ReadAccess access = mustReadable(fileId, ctx);
+        FileObject file = access.file();
         String name = download ? displayName(file, ctx) : null;
-        Duration duration = Duration.ofMinutes(file.getScope().getUrlExpireMinutes());
+        Duration duration = Duration.ofMinutes(access.showcasePublic() ? 5 : file.getScope().getUrlExpireMinutes());
         String url = storageService.presignGet(file.getObjectKey(), file.getContentType(), name, duration);
         return new FileUrlVO(url, LocalDateTime.now().plus(duration));
     }
 
     public FileInfoVO info(Long fileId, Context ctx) {
-        return toInfo(mustReadable(fileId, ctx));
+        return toInfo(mustReadable(fileId, ctx).file());
     }
 
     @Transactional
     public void delete(Long fileId, Context ctx) {
-        FileObject file = mustFind(fileId);
+        FileObject file = fileObjectMapper.lockById(fileId);
+        if (file == null) throw new BusinessException(ResultCode.FILE_NOT_FOUND);
         if (file.getStatus() == FileStatus.DELETED) return;
         requireWriter(file, ctx);
+        if (showcaseProjectMapper.referenced(fileId)) throw new BusinessException(ResultCode.FILE_REFERENCED);
         file.setStatus(FileStatus.DELETED);
         file.setUpdateTime(LocalDateTime.now());
         fileObjectMapper.updateById(file);
@@ -161,19 +166,24 @@ public class FileService {
         return file;
     }
 
-    private FileObject mustReadable(Long fileId, Context ctx) {
+    private record ReadAccess(FileObject file, boolean showcasePublic) {}
+
+    private ReadAccess mustReadable(Long fileId, Context ctx) {
         FileObject file = mustFind(fileId);
         if (file.getStatus() != FileStatus.READY) {
             throw new BusinessException(ResultCode.FILE_NOT_READY);
         }
-        if (Boolean.TRUE.equals(file.getScope().getGuestReadable())) return file;
+        // 记录本次授权来源，避免撤回与二次查询竞态导致公开视频误用私有文件的长有效期。
+        if ((file.getScope() == FileScope.SHOWCASE || file.getScope() == FileScope.SUBMIT_VIDEO)
+                && showcaseProjectMapper.publicFile(fileId, LocalDateTime.now())) return new ReadAccess(file, true);
+        if (Boolean.TRUE.equals(file.getScope().getGuestReadable())) return new ReadAccess(file, false);
         if (!ctx.isAuthenticated()) throw new BusinessException(ResultCode.TOKEN_IS_BLANK);
-        if (file.getUploaderId().equals(ctx.userId())) return file;
+        if (file.getUploaderId().equals(ctx.userId())) return new ReadAccess(file, false);
 
         Context anchored = ctx.anchor(file.anchors());
-        if (test(anchored, Role.SUPER)) return file;
+        if (test(anchored, Role.SUPER)) return new ReadAccess(file, false);
         for (Role role : file.getScope().getReadRoles()) {
-            if (test(anchored, role)) return file;
+            if (test(anchored, role)) return new ReadAccess(file, false);
         }
         throw new BusinessException(ResultCode.UNAUTHORIZED);
     }

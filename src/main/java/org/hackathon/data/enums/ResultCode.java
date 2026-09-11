@@ -134,6 +134,11 @@ public enum ResultCode {
     VOTE_REPEAT(3402, HttpStatus.CONFLICT, "已投过该作品，不能重复投票"),
     VOTE_DAILY_LIMIT(3403, HttpStatus.FORBIDDEN, "今日票数已达上限"),
 
+    SHOWCASE_NOT_FOUND(3501, HttpStatus.NOT_FOUND, "风采墙项目不存在或未公开"),
+    SHOWCASE_NOT_ENDED(3502, HttpStatus.FORBIDDEN, "赛事结束后才能编辑或公开风采墙项目"),
+    SHOWCASE_STATE_CONFLICT(3503, HttpStatus.CONFLICT, "当前发布状态不允许此操作"),
+    SHOWCASE_SOURCE_MISMATCH(3504, HttpStatus.BAD_REQUEST, "展示来源不属于本队本赛事"),
+
     //6XXX 文件相关
     FILE_NOT_FOUND(6001, HttpStatus.NOT_FOUND, "文件不存在"),
     FILE_TYPE_NOT_ALLOWED(6002, HttpStatus.BAD_REQUEST, "不支持的文件类型"),
@@ -145,6 +150,7 @@ public enum ResultCode {
     SUBMIT_ITEM_DISABLED(6008, HttpStatus.FORBIDDEN, "本轮未开启该提交项"),
     FILE_NAME_ILLEGAL(6009, HttpStatus.BAD_REQUEST, "文件名非法"),
     STORAGE_ERROR(6010, HttpStatus.INTERNAL_SERVER_ERROR, "存储服务异常"),
+    FILE_REFERENCED(6011, HttpStatus.CONFLICT, "文件被风采墙项目引用，请先解除引用"),
 
     //4XXX 通用（全局异常处理）
     //PARAM_ERROR的msg通过Validation抛出具体错误，详见各参数message

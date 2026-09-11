@@ -32,7 +32,7 @@ public enum FileScope {
 
     EXPORT(40, "export", Group.SYSTEM, false, true, 200, 30, Ext.EXPORTABLE, Read.ADMIN_ONLY),
 
-    SHOWCASE(50, "showcase", Group.SHOWCASE, true, false, 2048, 120, Ext.IMAGE_VIDEO, Read.NONE),
+    SHOWCASE(50, "showcase", Group.SHOWCASE, false, false, 2048, 5, Ext.IMAGE_VIDEO, Read.TEAM_SIDE),
     ;
 
     public enum Group { AVATAR, EVENT_ASSET, TRACK_ASSET, SUBMIT, APPEAL, SHOWCASE, SYSTEM }
