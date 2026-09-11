@@ -26,6 +26,8 @@ tags:
   - {name: 文件, description: S3 预签名上传与文件访问}
   - {name: 投票, description: 大众投票与排行榜}
   - {name: 通知, description: 站内通知}
+  - {name: 风采墙, description: 赛后项目公开展示与管理}
+  - {name: 数据面板, description: 管理统计与按统计项配置的公开面板}
 paths:
   /auth/test:
     post:
@@ -1487,6 +1489,7 @@ paths:
       tags: [文件]
       operationId: getFileUrl
       summary: 获取文件访问地址
+      description: SHOWCASE文件及所选来源版本的参赛视频仅在被已发布项目引用时允许游客访问，公开签名有效期为5分钟；撤回/下架停止新授权，已签发URL在到期前仍可能有效。
       security: [{}, {bearerAuth: []}]
       parameters:
         - {name: download, in: query, required: false, schema: {type: boolean, default: false}, description: 是否以附件方式下载}
@@ -1508,6 +1511,7 @@ paths:
       tags: [文件]
       operationId: deleteFile
       summary: 删除文件
+      description: 被风采墙记录引用的文件不可删除，返回409/6011；包括草稿、撤回和下架记录。请先编辑展示内容解除引用。
       security: [{bearerAuth: []}]
       x-required-roles: [LOGGED_IN]
       responses:
@@ -1591,6 +1595,462 @@ paths:
       responses:
         '200': {$ref: '#/components/responses/OkResponse'}
         default: {$ref: '#/components/responses/ErrorResponse'}
+
+  /showcase/list:
+    get:
+      tags:
+      - 风采墙
+      operationId: listShowcaseProjects
+      summary: 公开项目分页
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShowcasePageResult'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      parameters:
+      - name: eventId
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+      - name: trackId
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+      description: 仅返回PUBLISHED且赛事已结束的项目。按publishedAt、showcaseId倒序；关键词按标题/摘要包含匹配，%和_按普通字符处理。
+  /showcase/{showcaseId}:
+    get:
+      tags:
+      - 风采墙
+      operationId: getShowcaseProject
+      summary: 公开项目详情
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShowcaseDetailVOResult'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      parameters:
+      - name: showcaseId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      description: 草稿、撤回、下架或赛事未结束统一返回3501。
+  /showcase/team/{teamId}:
+    get:
+      tags:
+      - 风采墙
+      operationId: getTeamShowcase
+      summary: 队伍展示管理详情
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShowcaseManageVOResult'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      security:
+      - bearerAuth: []
+      x-required-roles:
+      - TEAM_MEMBER
+      - EVENT_ADMIN
+      description: 未创建时data=null。
+    put:
+      tags:
+      - 风采墙
+      operationId: saveTeamShowcase
+      summary: 保存展示草稿
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShowcaseManageVOResult'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveShowcaseDTO'
+      security:
+      - bearerAuth: []
+      x-required-roles:
+      - TEAM_LEADER
+      description: 仅赛事结束后。已发布项目须先撤回；BLOCKED须管理员解除下架。来源作品必须属于本队，视频可引用该来源版本的SUBMIT_VIDEO；其他文件必须为本队SHOWCASE。
+  /showcase/team/{teamId}/publish:
+    post:
+      tags:
+      - 风采墙
+      operationId: publishTeamShowcase
+      summary: 发布项目
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShowcaseManageVOResult'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShowcaseActionDTO'
+      security:
+      - bearerAuth: []
+      x-required-roles:
+      - TEAM_LEADER
+      description: 所有状态变更需当前version。发布要求赛事已结束，架构介绍、Git地址、协议和视频完整；不要求获奖，不设发布前审核。撤回停止公开详情与新文件URL签发，已签发URL最长仍可用5分钟。
+  /showcase/team/{teamId}/withdraw:
+    post:
+      tags:
+      - 风采墙
+      operationId: withdrawTeamShowcase
+      summary: 撤回项目
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShowcaseManageVOResult'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShowcaseActionDTO'
+      security:
+      - bearerAuth: []
+      x-required-roles:
+      - TEAM_LEADER
+      description: 所有状态变更需当前version。发布要求赛事已结束，架构介绍、Git地址、协议和视频完整；不要求获奖，不设发布前审核。撤回停止公开详情与新文件URL签发，已签发URL最长仍可用5分钟。
+  /showcase/event/{eventId}/manage/list:
+    get:
+      tags:
+      - 风采墙
+      operationId: listManagedShowcase
+      summary: 管理员项目分页
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShowcaseManagePageResult'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      - name: trackId
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+      - name: keyword
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+      - name: status
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/ShowcaseStatus'
+      security:
+      - bearerAuth: []
+      x-required-roles:
+      - EVENT_ADMIN
+  /showcase/event/{eventId}/{showcaseId}/moderation:
+    put:
+      tags:
+      - 风采墙
+      operationId: moderateShowcase
+      summary: 管理员下架或解除下架
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShowcaseManageVOResult'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      - name: showcaseId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModerateShowcaseDTO'
+      security:
+      - bearerAuth: []
+      x-required-roles:
+      - EVENT_ADMIN
+      description: 检查项目所属赛事。解除下架转WITHDRAWN，不自动公开。
+  /dashboard/event/{eventId}:
+    get:
+      tags:
+      - 数据面板
+      operationId: getPublicDashboard
+      summary: 公开赛事统计
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicDashboardVOResult'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      description: 仅查询和返回publicMetrics选中的完整统计项。默认publicMetrics=[]、metrics={}，无全局公开布尔开关。未选字段不返回；不得将Admin响应直接供公众使用。
+  /dashboard/event/{eventId}/admin:
+    get:
+      tags:
+      - 数据面板
+      operationId: getAdminDashboard
+      summary: 管理员赛事面板
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDashboardVOResult'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      security:
+      - bearerAuth: []
+      x-required-roles:
+      - EVENT_ADMIN
+  /dashboard/event/{eventId}/config:
+    get:
+      tags:
+      - 数据面板
+      operationId: getDashboardConfig
+      summary: 读取公开统计项配置
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardConfigVOResult'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      security:
+      - bearerAuth: []
+      x-required-roles:
+      - EVENT_ADMIN
+    put:
+      tags:
+      - 数据面板
+      operationId: updateDashboardConfig
+      summary: 设置公开统计项
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardConfigVOResult'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublicMetricsDTO'
+      security:
+      - bearerAuth: []
+      x-required-roles:
+      - EVENT_ADMIN
+  /dashboard/event/{eventId}/admin/details:
+    get:
+      tags:
+      - 数据面板
+      operationId: getDashboardDetails
+      summary: 管理统计对应明细
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardDetailPageResult'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      - name: kind
+        in: query
+        required: true
+        schema:
+          $ref: '#/components/schemas/DashboardDetailKind'
+      - name: phaseId
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+      security:
+      - bearerAuth: []
+      x-required-roles:
+      - EVENT_ADMIN
+      description: SUBMITTED/MISSING_SUBMISSION/UNASSIGNED必须提供phaseId；UNTEAMED/UNDERFILLED不接受phaseId；其他kind可按轮次筛选。任何phaseId必须属于路径赛事。
 
 components:
   securitySchemes:
@@ -1901,6 +2361,8 @@ components:
       type: object
       description: 字段是否必填由轮次 submissionConfig 动态决定。
       properties:
+        aiTools: {$ref: '#/components/schemas/ProjectTags'}
+        techStacks: {$ref: '#/components/schemas/ProjectTags'}
         repoUrl: {type: string, maxLength: 255}
         licenseType: {type: string, maxLength: 50}
         derivedFrom: {type: string, maxLength: 500}
@@ -2341,6 +2803,8 @@ components:
       type: object
       description: 尚未提交时，仅 config 与轮次/队伍上下文等字段有值，作品内容字段可为空。
       properties:
+        aiTools: {$ref: '#/components/schemas/ProjectTags'}
+        techStacks: {$ref: '#/components/schemas/ProjectTags'}
         submissionId: {type: [integer, 'null'], format: int32}
         phaseId: {type: integer, format: int32}
         phaseName: {type: string}
@@ -2377,6 +2841,8 @@ components:
     SubmissionSnapshot:
       type: object
       properties:
+        aiTools: {$ref: '#/components/schemas/ProjectTags'}
+        techStacks: {$ref: '#/components/schemas/ProjectTags'}
         repoUrl: {type: [string, 'null']}
         licenseType: {type: [string, 'null']}
         derivedFrom: {type: [string, 'null']}
@@ -2740,3 +3206,1077 @@ components:
     VoteRankListResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/VoteRankVO'}}}}]}
     VoteStatusResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/VoteStatusVO'}}}]}
     NotificationPageResult: {allOf: [{$ref: '#/components/schemas/ResultBase'}, {type: object, properties: {data: {$ref: '#/components/schemas/NotificationPage'}}}]}
+
+    PublicMetric:
+      type: string
+      enum:
+      - PARTICIPANT_COUNT
+      - CAMPUS_DISTRIBUTION
+      - TEAM_COUNT
+      - TRACK_SUBMISSIONS
+      - AI_TOOLS
+      - TECH_STACKS
+      description: 仅包含允许公开的统计项；不可配置任何管理明细。
+    ShowcaseStatus:
+      type: string
+      enum:
+      - DRAFT
+      - PUBLISHED
+      - WITHDRAWN
+      - BLOCKED
+    ProjectTags:
+      type:
+      - array
+      - 'null'
+      maxItems: 30
+      items:
+        type: string
+        minLength: 1
+        maxLength: 50
+      description: 项目实际使用的标签；null表示未填报，[]表示明确没有使用。保存时统一空白、大小写及常见别名并去重。提交/补交缺省或null保留已有值，[]清空；不受动态提交项开关限制。
+    SaveShowcaseDTO:
+      type: object
+      properties:
+        sourceSubmissionId:
+          type: integer
+          minimum: 1
+        sourceVersionNo:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        summary:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+        introMd:
+          type:
+          - string
+          - 'null'
+          maxLength: 100000
+          description: 架构介绍Markdown。前端必须使用安全渲染，禁止原始HTML和危险链接协议；展示图片通过files引用。
+        repoUrl:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+          description: 仅允许不含账号密码的有效HTTP/HTTPS网址
+        demoUrl:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+          description: 仅允许不含账号密码的有效HTTP/HTTPS网址
+        videoUrl:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+          description: 仅允许不含账号密码的有效HTTP/HTTPS网址
+        licenseType:
+          type:
+          - string
+          - 'null'
+          maxLength: 50
+        derivedFrom:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+        coverFileId:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          minimum: 1
+        videoFileId:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          minimum: 1
+        imageFileIds:
+          type:
+          - array
+          - 'null'
+          items:
+            type: integer
+            format: int64
+            minimum: 1
+          maxItems: 20
+        version:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          description: 首次创建省略；修改必须携带管理详情中的当前版本。
+      description: 赛后由队长保存。展示内容全量替换：缺省/null清空可选字段，imageFileIds缺省/null/[]均清空图片引用。来源版本仅追溯，不隐式导入正文；前端可先读取作品版本并显式填入。视频文件与视频URL二选一。
+      required:
+      - sourceSubmissionId
+      - sourceVersionNo
+      - title
+    ShowcaseActionDTO:
+      type: object
+      properties:
+        version:
+          type: integer
+          minimum: 1
+      required:
+      - version
+    ModerateShowcaseDTO:
+      type: object
+      properties:
+        version:
+          type: integer
+          minimum: 1
+        blocked:
+          type: boolean
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+      required:
+      - version
+      - blocked
+      - reason
+    PublicMetricsDTO:
+      type: object
+      properties:
+        publicMetrics:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicMetric'
+          maxItems: 6
+          uniqueItems: true
+        version:
+          type: integer
+          minimum: 0
+      description: 全量替换公开项；[]取消全部公开。缺省或null非法。首次配置version=0，更新使用GET返回的版本。
+      required:
+      - publicMetrics
+      - version
+    DashboardConfigVO:
+      type: object
+      properties:
+        eventId:
+          type: integer
+          format: int64
+          minimum: 0
+        publicMetrics:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicMetric'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        updateTime:
+          oneOf:
+          - $ref: '#/components/schemas/LocalDateTime'
+          - type: 'null'
+      required:
+      - eventId
+      - publicMetrics
+      - version
+      - updateTime
+    ShowcaseFile:
+      type: object
+      properties:
+        fileId:
+          type: integer
+          format: int64
+          minimum: 0
+        role:
+          type: string
+          enum:
+          - COVER
+          - IMAGE
+          - VIDEO
+      required:
+      - fileId
+      - role
+    ShowcaseBriefVO:
+      type: object
+      properties:
+        showcaseId:
+          type: integer
+          format: int64
+          minimum: 0
+        eventId:
+          type: integer
+          format: int64
+          minimum: 0
+        eventName:
+          type: string
+        trackId:
+          type: integer
+          format: int64
+          minimum: 0
+        trackName:
+          type: string
+        teamId:
+          type: integer
+          format: int64
+          minimum: 0
+        teamName:
+          type: string
+        title:
+          type: string
+        summary:
+          type:
+          - string
+          - 'null'
+        coverFileId:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          minimum: 0
+        licenseType:
+          type:
+          - string
+          - 'null'
+        publishedAt:
+          oneOf:
+          - $ref: '#/components/schemas/LocalDateTime'
+          - type: 'null'
+      required:
+      - showcaseId
+      - eventId
+      - eventName
+      - trackId
+      - trackName
+      - teamId
+      - teamName
+      - title
+      - summary
+      - coverFileId
+      - licenseType
+      - publishedAt
+    ShowcaseDetailVO:
+      type: object
+      properties:
+        showcaseId:
+          type: integer
+          format: int64
+          minimum: 0
+        eventId:
+          type: integer
+          format: int64
+          minimum: 0
+        eventName:
+          type: string
+        trackId:
+          type: integer
+          format: int64
+          minimum: 0
+        trackName:
+          type: string
+        teamId:
+          type: integer
+          format: int64
+          minimum: 0
+        teamName:
+          type: string
+        title:
+          type: string
+        summary:
+          type:
+          - string
+          - 'null'
+        coverFileId:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          minimum: 0
+        licenseType:
+          type:
+          - string
+          - 'null'
+        publishedAt:
+          oneOf:
+          - $ref: '#/components/schemas/LocalDateTime'
+          - type: 'null'
+        introMd:
+          type:
+          - string
+          - 'null'
+        repoUrl:
+          type:
+          - string
+          - 'null'
+        derivedFrom:
+          type:
+          - string
+          - 'null'
+        demoUrl:
+          type:
+          - string
+          - 'null'
+        videoUrl:
+          type:
+          - string
+          - 'null'
+        videoFileId:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          minimum: 0
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShowcaseFile'
+      description: 公开白名单响应，不包含历史版本、成员联系方式、学号、评审数据或管理日志。文件URL由GET /file/{fileId}/url按需获取。
+      required:
+      - showcaseId
+      - eventId
+      - eventName
+      - trackId
+      - trackName
+      - teamId
+      - teamName
+      - title
+      - summary
+      - coverFileId
+      - licenseType
+      - publishedAt
+      - introMd
+      - repoUrl
+      - derivedFrom
+      - demoUrl
+      - videoUrl
+      - videoFileId
+      - files
+    ShowcaseManageVO:
+      type: object
+      properties:
+        showcaseId:
+          type: integer
+          format: int64
+          minimum: 0
+        eventId:
+          type: integer
+          format: int64
+          minimum: 0
+        eventName:
+          type: string
+        trackId:
+          type: integer
+          format: int64
+          minimum: 0
+        trackName:
+          type: string
+        teamId:
+          type: integer
+          format: int64
+          minimum: 0
+        teamName:
+          type: string
+        title:
+          type: string
+        summary:
+          type:
+          - string
+          - 'null'
+        coverFileId:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          minimum: 0
+        licenseType:
+          type:
+          - string
+          - 'null'
+        publishedAt:
+          oneOf:
+          - $ref: '#/components/schemas/LocalDateTime'
+          - type: 'null'
+        introMd:
+          type:
+          - string
+          - 'null'
+        repoUrl:
+          type:
+          - string
+          - 'null'
+        derivedFrom:
+          type:
+          - string
+          - 'null'
+        demoUrl:
+          type:
+          - string
+          - 'null'
+        videoUrl:
+          type:
+          - string
+          - 'null'
+        videoFileId:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          minimum: 0
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShowcaseFile'
+        status:
+          $ref: '#/components/schemas/ShowcaseStatus'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        sourceSubmissionId:
+          type: integer
+          format: int64
+          minimum: 0
+        sourceVersionNo:
+          type: integer
+          format: int64
+          minimum: 0
+        moderationReason:
+          type:
+          - string
+          - 'null'
+        updateTime:
+          oneOf:
+          - $ref: '#/components/schemas/LocalDateTime'
+          - type: 'null'
+        operations:
+          type: array
+          items:
+            type: object
+            properties:
+              actorId:
+                type: integer
+                format: int64
+                minimum: 0
+              action:
+                type: string
+                enum:
+                - SAVE
+                - PUBLISH
+                - WITHDRAW
+                - BLOCK
+                - UNBLOCK
+              reason:
+                type:
+                - string
+                - 'null'
+              createTime:
+                oneOf:
+                - $ref: '#/components/schemas/LocalDateTime'
+                - type: 'null'
+      required:
+      - showcaseId
+      - eventId
+      - eventName
+      - trackId
+      - trackName
+      - teamId
+      - teamName
+      - title
+      - summary
+      - coverFileId
+      - licenseType
+      - publishedAt
+      - introMd
+      - repoUrl
+      - derivedFrom
+      - demoUrl
+      - videoUrl
+      - videoFileId
+      - files
+      - status
+      - version
+      - sourceSubmissionId
+      - sourceVersionNo
+      - moderationReason
+      - updateTime
+      - operations
+    ShowcaseManageBriefVO:
+      type: object
+      properties:
+        showcaseId:
+          type: integer
+          format: int64
+          minimum: 0
+        eventId:
+          type: integer
+          format: int64
+          minimum: 0
+        eventName:
+          type: string
+        trackId:
+          type: integer
+          format: int64
+          minimum: 0
+        trackName:
+          type: string
+        teamId:
+          type: integer
+          format: int64
+          minimum: 0
+        teamName:
+          type: string
+        title:
+          type: string
+        summary:
+          type:
+          - string
+          - 'null'
+        coverFileId:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          minimum: 0
+        licenseType:
+          type:
+          - string
+          - 'null'
+        publishedAt:
+          oneOf:
+          - $ref: '#/components/schemas/LocalDateTime'
+          - type: 'null'
+        status:
+          $ref: '#/components/schemas/ShowcaseStatus'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        moderationReason:
+          type:
+          - string
+          - 'null'
+    WordCloudVO:
+      type: object
+      properties:
+        totalProjects:
+          type: integer
+          format: int64
+          minimum: 0
+        reportedProjects:
+          type: integer
+          format: int64
+          minimum: 0
+        coverage:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 1
+          description: 0至1的比例，分母为0或无法确定时为null
+        words:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              count:
+                type: integer
+                format: int64
+                minimum: 0
+            required:
+            - name
+            - count
+        truncated:
+          type: boolean
+      description: 每队取submitBeg最新轮次的当前版本；并列按phaseId。每个标签按使用项目数统计，非词频。最多50项，按数量降序、名称升序；[]计入已填报，NULL不计。
+      required:
+      - totalProjects
+      - reportedProjects
+      - coverage
+      - words
+      - truncated
+    DashboardMetrics:
+      type: object
+      properties:
+        participantCount:
+          type: integer
+          format: int64
+          minimum: 0
+        campusDistribution:
+          type: array
+          items:
+            type: object
+            properties:
+              campus:
+                type: string
+              count:
+                type: integer
+                format: int64
+                minimum: 0
+              ratio:
+                type:
+                - number
+                - 'null'
+                minimum: 0
+                maximum: 1
+                description: 0至1的比例，分母为0或无法确定时为null
+            required:
+            - campus
+            - count
+            - ratio
+        teamCount:
+          type: integer
+          format: int64
+          minimum: 0
+        trackSubmissions:
+          type: array
+          items:
+            type: object
+            properties:
+              trackId:
+                type: integer
+                format: int64
+                minimum: 0
+              trackName:
+                type: string
+              count:
+                type: integer
+                format: int64
+                minimum: 0
+            required:
+            - trackId
+            - trackName
+            - count
+        aiTools:
+          $ref: '#/components/schemas/WordCloudVO'
+        techStacks:
+          $ref: '#/components/schemas/WordCloudVO'
+      additionalProperties: false
+      description: Public只包含所选字段，未公开字段完全省略；Admin返回全部六项。报名人数基于当前registration，校区来自当前student资料；八个校区及未知分类均保留。赛道作品数按有提交的team去重，空赛道为0。相关分布数据可以推算总数。
+    PublicDashboardVO:
+      type: object
+      properties:
+        eventId:
+          type: integer
+          format: int64
+          minimum: 0
+        eventName:
+          type: string
+        generatedAt:
+          $ref: '#/components/schemas/LocalDateTime'
+        publicMetrics:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicMetric'
+        metrics:
+          $ref: '#/components/schemas/DashboardMetrics'
+      additionalProperties: false
+      required:
+      - eventId
+      - eventName
+      - generatedAt
+      - publicMetrics
+      - metrics
+    DashboardPhaseVO:
+      type: object
+      properties:
+        phaseId:
+          type: integer
+          format: int64
+          minimum: 0
+        trackId:
+          type: integer
+          format: int64
+          minimum: 0
+        knownExpectedTeams:
+          type: integer
+          format: int64
+          minimum: 0
+        knownMissingTeams:
+          type: integer
+          format: int64
+          minimum: 0
+        submittedTeams:
+          type: integer
+          format: int64
+          minimum: 0
+        unassignedWorks:
+          type: integer
+          format: int64
+          minimum: 0
+        pendingTasks:
+          type: integer
+          format: int64
+          minimum: 0
+        doneTasks:
+          type: integer
+          format: int64
+          minimum: 0
+        totalTasks:
+          type: integer
+          format: int64
+          minimum: 0
+        phaseName:
+          type: string
+        trackName:
+          type: string
+        submitBeg:
+          $ref: '#/components/schemas/LocalDateTime'
+        submitEnd:
+          $ref: '#/components/schemas/LocalDateTime'
+        reviewEnd:
+          $ref: '#/components/schemas/LocalDateTime'
+        denominatorAvailable:
+          type: boolean
+        expectedTeams:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          minimum: 0
+        missingTeams:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          minimum: 0
+        submissionRate:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 1
+          description: 0至1的比例，分母为0或无法确定时为null
+        reviewRate:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 1
+          description: 0至1的比例，分母为0或无法确定时为null
+        denominatorReason:
+          type:
+          - string
+          - 'null'
+          enum:
+          - HISTORICAL_ELIGIBILITY_UNAVAILABLE
+          - null
+      description: 首轮以当前赛道队伍为分母。非首轮缺少历史晋级名册，expectedTeams/missingTeams/submissionRate为null；knownExpectedTeams仅计当前轮次指向该轮或已提交队伍，是下界，不能据此声称完整提交率。评审任务只计PENDING/DONE，未分配作品指没有任何在手评审任务的作品。
+      required:
+      - phaseId
+      - trackId
+      - knownExpectedTeams
+      - knownMissingTeams
+      - submittedTeams
+      - unassignedWorks
+      - pendingTasks
+      - doneTasks
+      - totalTasks
+      - phaseName
+      - trackName
+      - submitBeg
+      - submitEnd
+      - reviewEnd
+      - denominatorAvailable
+      - expectedTeams
+      - missingTeams
+      - submissionRate
+      - reviewRate
+      - denominatorReason
+    DashboardJudgeVO:
+      type: object
+      properties:
+        phaseId:
+          type: integer
+          format: int64
+          minimum: 0
+        judgeId:
+          type: integer
+          format: int64
+          minimum: 0
+        pending:
+          type: integer
+          format: int64
+          minimum: 0
+        done:
+          type: integer
+          format: int64
+          minimum: 0
+        total:
+          type: integer
+          format: int64
+          minimum: 0
+        overdue:
+          type: integer
+          format: int64
+          minimum: 0
+        phaseName:
+          type: string
+        judgeName:
+          type: string
+        completionRate:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 1
+          description: 0至1的比例，分母为0或无法确定时为null
+    AdminDashboardVO:
+      type: object
+      properties:
+        eventId:
+          type: integer
+          format: int64
+          minimum: 0
+        eventName:
+          type: string
+        generatedAt:
+          $ref: '#/components/schemas/LocalDateTime'
+        publicConfig:
+          $ref: '#/components/schemas/DashboardConfigVO'
+        metrics:
+          $ref: '#/components/schemas/DashboardMetrics'
+        registration:
+          type: object
+          properties:
+            participants:
+              type: integer
+              format: int64
+              minimum: 0
+            teamedParticipants:
+              type: integer
+              format: int64
+              minimum: 0
+            unteamedParticipants:
+              type: integer
+              format: int64
+              minimum: 0
+            teams:
+              type: integer
+              format: int64
+              minimum: 0
+            underfilledTeams:
+              type: integer
+              format: int64
+              minimum: 0
+        phases:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardPhaseVO'
+        judges:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardJudgeVO'
+        workItems:
+          type: object
+          properties:
+            unreplacedRecusals:
+              type: integer
+              format: int64
+              minimum: 0
+            openFlags:
+              type: integer
+              format: int64
+              minimum: 0
+            expiredFlags:
+              type: integer
+              format: int64
+              minimum: 0
+      description: 仅本赛事管理员/超管。openFlags为未截止OPEN窗口；expiredFlags包括已截止OPEN和系统自动关闭的过期记录，不包括手动关闭和已补交。unreplacedRecusals为尚未关联接手任务的回避记录；新人工补派自动关联，历史未关联补派需人工核实。
+    DashboardDetailKind:
+      type: string
+      enum:
+      - UNTEAMED
+      - UNDERFILLED
+      - SUBMITTED
+      - MISSING_SUBMISSION
+      - UNASSIGNED
+      - PENDING_REVIEW
+      - UNREPLACED_RECUSED
+      - OPEN_FLAGS
+      - EXPIRED_FLAGS
+    DashboardDetailVO:
+      type: object
+      properties:
+        userId:
+          type: integer
+          format: int64
+          minimum: 0
+        teamId:
+          type: integer
+          format: int64
+          minimum: 0
+        trackId:
+          type: integer
+          format: int64
+          minimum: 0
+        phaseId:
+          type: integer
+          format: int64
+          minimum: 0
+        submissionId:
+          type: integer
+          format: int64
+          minimum: 0
+        assignmentId:
+          type: integer
+          format: int64
+          minimum: 0
+        judgeId:
+          type: integer
+          format: int64
+          minimum: 0
+        flagId:
+          type: integer
+          format: int64
+          minimum: 0
+        members:
+          type: integer
+          format: int64
+          minimum: 0
+        status:
+          type: integer
+          format: int64
+          minimum: 0
+        name:
+          type: string
+        judgeName:
+          type: string
+        description:
+          type: string
+        closeReason:
+          type: string
+        reviewEnd:
+          $ref: '#/components/schemas/LocalDateTime'
+        supplementEnd:
+          $ref: '#/components/schemas/LocalDateTime'
+      description: 按kind返回相关明细字段，不适用或数据库为NULL的字段省略。提供实体ID用于跳转现有管理接口。MISSING_SUBMISSION在非首轮只列已知名单中的未提交队伍。
+    ShowcasePage:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShowcaseBriefVO'
+        total:
+          type: integer
+          format: int64
+          minimum: 0
+        size:
+          type: integer
+          format: int64
+          minimum: 0
+        current:
+          type: integer
+          format: int64
+          minimum: 0
+        pages:
+          type: integer
+          format: int64
+          minimum: 0
+    ShowcaseManagePage:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShowcaseManageBriefVO'
+        total:
+          type: integer
+          format: int64
+          minimum: 0
+        size:
+          type: integer
+          format: int64
+          minimum: 0
+        current:
+          type: integer
+          format: int64
+          minimum: 0
+        pages:
+          type: integer
+          format: int64
+          minimum: 0
+    DashboardDetailPage:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardDetailVO'
+        total:
+          type: integer
+          format: int64
+          minimum: 0
+        size:
+          type: integer
+          format: int64
+          minimum: 0
+        current:
+          type: integer
+          format: int64
+          minimum: 0
+        pages:
+          type: integer
+          format: int64
+          minimum: 0
+    ShowcasePageResult:
+      allOf:
+      - $ref: '#/components/schemas/ResultBase'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/ShowcasePage'
+    ShowcaseManagePageResult:
+      allOf:
+      - $ref: '#/components/schemas/ResultBase'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/ShowcaseManagePage'
+    ShowcaseDetailVOResult:
+      allOf:
+      - $ref: '#/components/schemas/ResultBase'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/ShowcaseDetailVO'
+    ShowcaseManageVOResult:
+      allOf:
+      - $ref: '#/components/schemas/ResultBase'
+      - type: object
+        properties:
+          data:
+            oneOf:
+            - $ref: '#/components/schemas/ShowcaseManageVO'
+            - type: 'null'
+    PublicDashboardVOResult:
+      allOf:
+      - $ref: '#/components/schemas/ResultBase'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/PublicDashboardVO'
+    AdminDashboardVOResult:
+      allOf:
+      - $ref: '#/components/schemas/ResultBase'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/AdminDashboardVO'
+    DashboardConfigVOResult:
+      allOf:
+      - $ref: '#/components/schemas/ResultBase'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/DashboardConfigVO'
+    DashboardDetailPageResult:
+      allOf:
+      - $ref: '#/components/schemas/ResultBase'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/DashboardDetailPage'
