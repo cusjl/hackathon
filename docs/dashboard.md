@@ -8,33 +8,36 @@
 
 ```json
 {
-  "publicMetrics": ["PARTICIPANT_COUNT", "CAMPUS_DISTRIBUTION", "TEAM_COUNT"],
+  "publicMetrics": ["PARTICIPANT_COUNT", "TEAM_COUNT", "SUBMISSION_COUNT"],
   "version": 0
 }
 ```
 
 未配置时返回 `publicMetrics=[]`、`version=0`。首次保存使用 0；以后携带查询返回的当前版本。列表全量替换，`[]` 取消全部公开；缺省、null、重复值、未知统计项均拒绝。并发写入只有一个请求能成功，其他请求返回 409 / 4002。
 
+参赛选手、参赛队伍、提交作品总数均可单独公开，最多可选七项。增加 `SUBMISSION_COUNT` 不改变已有赛事的公开配置；需要展示作品总数时，将它加入列表并携带当前版本保存。此项直接聚合已有作品数据，无需新增数据库迁移。
+
 | 配置值 | metrics 中的字段 | 口径 |
 |---|---|---|
 | PARTICIPANT_COUNT | participantCount | 当前本赛事报名记录数；报名唯一约束按用户与赛事去重，包含未组队者 |
 | CAMPUS_DISTRIBUTION | campusDistribution | 同一报名人群按当前学生校区分组；固定八校区及未知分类，缺失/异常值不丢弃 |
 | TEAM_COUNT | teamCount | 当前本赛事队伍数，包含已淘汰队伍 |
+| SUBMISSION_COUNT | submissionCount | 本赛事提交作品总数，按至少提交过一次的队伍去重；多轮提交、修改和补交不重复计数，不要求已发布到风采墙 |
 | TRACK_SUBMISSIONS | trackSubmissions | 各赛道至少提交过一次的队伍数；跨轮次和版本去重，无提交赛道为0 |
 | AI_TOOLS | aiTools | 代表作品实际填报的 AI 工具，按使用项目数统计 |
 | TECH_STACKS | techStacks | 代表作品实际填报的设计工具和技术栈，按使用项目数统计 |
 
 公开接口：`GET /dashboard/event/{eventId}`。其 `metrics` 只包含被选中的字段，后端也只查询被选项。没有选中项时返回 `{}`，前端显示“暂无公开统计”。已公开但没有数据的指标保留零值/空数组，不与未公开混淆。
 
-例如只选择 TEAM_COUNT 时：
+例如选择参赛选手、参赛队伍和提交作品总数时：
 
 ```json
 {
   "eventId": 1,
   "eventName": "示例赛事",
   "generatedAt": "2026-09-11T18:00:00",
-  "publicMetrics": ["TEAM_COUNT"],
-  "metrics": {"teamCount": 12}
+  "publicMetrics": ["PARTICIPANT_COUNT", "TEAM_COUNT", "SUBMISSION_COUNT"],
+  "metrics": {"participantCount": 48, "teamCount": 12, "submissionCount": 10}
 }
 ```
 
@@ -65,7 +68,7 @@
 - `phases`：各轮次提交情况、未分配作品数、待评/已完成任务数、评审完成率。
 - `judges`：各轮次各评委的任务量、完成量、待评量及逾期量。只在当前仍持有的 PENDING/DONE 任务中计算完成率。
 - `workItems`：尚未关联接手任务的回避记录、当前有效补交窗口、到期未补交记录。
-- `metrics`：全部六项汇总统计；`publicConfig`：当前公开项配置。
+- `metrics`：全部七项汇总统计；`publicConfig`：当前公开项配置。
 
 ### 轮次提交分母的边界
 
@@ -113,5 +116,14 @@ python3 scripts/showcase_dashboard_api_integration_test.py \
 ```
 
 服务应使用同一隔离schema，`spring.flyway.baseline-on-migrate=false`；本地MySQL会话与应用统一为Asia/Shanghai（连接初始化 `SET time_zone='+08:00'`），UTF-8使用utf8mb4。展示文件需连接独立测试S3存储；本次验证使用本机MinIO，无生产存储写入。
+
+只验证公开总数和配置权限时可添加 `--counts-only`，此模式不访问对象存储：
+
+```bash
+python3 scripts/showcase_dashboard_api_integration_test.py \
+  --counts-only --database hackathon_dashboard_counts_it_20260912 \
+  --result reports/dashboard-counts-api-results.json \
+  --report reports/dashboard-counts-api-report.html
+```
 
 完整字段、类型、鉴权与响应结构见 `openapi.yaml`。

@@ -88,9 +88,35 @@ def run(args, r):
         responses=list(pool.map(lambda _:r.raw('PUT',base+'/config',A,{'publicMetrics':['PARTICIPANT_COUNT'],'version':c['version']}),range(2)))
     assert sorted(x[0] for x in responses)==[200,409]
     c=r.check('并发配置写入保持唯一版本','GET',base+'/config',A,verify=lambda d:d['version']==2)
-    keys=['PARTICIPANT_COUNT','CAMPUS_DISTRIBUTION','TEAM_COUNT','TRACK_SUBMISSIONS','AI_TOOLS','TECH_STACKS']
+    keys=['PARTICIPANT_COUNT','CAMPUS_DISTRIBUTION','TEAM_COUNT','SUBMISSION_COUNT','TRACK_SUBMISSIONS','AI_TOOLS','TECH_STACKS']
     c=r.check('设置全部合法公开统计项','PUT',base+'/config',A,{'publicMetrics':keys,'version':c['version']})
     r.check('报名人数和校区分布同一范围','GET',base,verify=lambda d:d['metrics']['participantCount']==4 and sum(x['count'] for x in d['metrics']['campusDistribution'])==4 and len(d['metrics']['campusDistribution'])==9)
+    r.check('七项公开配置完整返回','GET',base,verify=lambda d:set(d['metrics'])=={'participantCount','campusDistribution','teamCount','submissionCount','trackSubmissions','aiTools','techStacks'} and d['metrics']['submissionCount']==2)
+    if args.counts_only:
+        totals=['PARTICIPANT_COUNT','TEAM_COUNT','SUBMISSION_COUNT']
+        empty_base=f'/dashboard/event/{empty}'
+        r.check('零数据赛事公开三项总数','PUT',empty_base+'/config',B,{'publicMetrics':totals,'version':0})
+        r.check('公开零值不省略字段','GET',empty_base,verify=lambda d:d['metrics']=={'participantCount':0,'teamCount':0,'submissionCount':0})
+        # 另一个赛事有作品和报名记录，不计入目标赛事；目标赛事增加未提交队伍。
+        foreign_team=insert(f"INSERT INTO team(name,event_id,track_id,leader_id,size,type,status,version,create_time,update_time) VALUES('foreign-{nonce}',{empty},{foreign},{otheradmin},1,0,0,1,NOW(),NOW())")
+        sql(f"INSERT INTO registration(user_id,event_id,track_id,team_id,version,create_time,update_time) VALUES({otheradmin},{empty},{foreign},{foreign_team},1,NOW(),NOW());")
+        old_submission(foreign_team,fp,otheradmin,'NULL')
+        insert(f"INSERT INTO team(name,event_id,track_id,leader_id,size,type,status,version,create_time,update_time) VALUES('unsubmitted-{nonce}',{e},{zero},{alone},1,0,0,1,NOW(),NOW())")
+        # 通过正式HTTP提交同队下一轮作品，并再次提交产生新版本。
+        sp=f'/submission/phase/{p2}/team/{team}'
+        created=r.check('同队跨轮次提交作品','POST',sp,L,{})
+        info=r.check('读取新提交版本','GET',f"/submission/{created['submissionId']}",L)
+        r.check('同队再次提交生成版本','POST',sp,L,{'version':info['version']})
+        c=r.check('公开三项总数','PUT',base+'/config',A,{'publicMetrics':totals,'version':c['version']})
+        expected={'participantCount':4,'teamCount':3,'submissionCount':2}
+        r.check('三项总数按赛事隔离且跨轮次版本去重','GET',base,verify=lambda d:d['metrics']==expected and 'registration' not in d and 'judges' not in d)
+        r.check('Admin与Public作品总数一致','GET',base+'/admin',A,verify=lambda d:d['metrics']['submissionCount']==2)
+        for metric,field in zip(totals,expected):
+            c=r.check('单独公开'+metric,'PUT',base+'/config',A,{'publicMetrics':[metric],'version':c['version']})
+            r.check('单项响应不泄露其他总数'+field,'GET',base,verify=lambda d,f=field:d['metrics']=={f:expected[f]})
+        c=r.check('清空公开配置','PUT',base+'/config',A,{'publicMetrics':[],'version':c['version']})
+        r.check('关闭后不返回三个总数','GET',base,verify=lambda d:d['metrics']=={})
+        return
     # 校区缺失时保留总人数，归入未知。
     sql(f"DELETE FROM student WHERE user_id={alone};")
     r.check('缺失学生资料归入未知校区','GET',base,verify=lambda d:d['metrics']['campusDistribution'][-1]['count']==1 and sum(x['count'] for x in d['metrics']['campusDistribution'])==4)
@@ -215,7 +241,7 @@ def run(args, r):
     r.check('撤回后参赛视频恢复私有','GET',f'/file/{video}/url',status=401,code=1004)
     d=r.check('清除视频引用','PUT',wall,L,{**draft,'version':d['version']})
     for fid in [video,other_video]:r.check('清理视频测试文件','DELETE',f'/file/{fid}',L)
-    for metric,field in zip(keys,['participantCount','campusDistribution','teamCount','trackSubmissions','aiTools','techStacks']):
+    for metric,field in zip(keys,['participantCount','campusDistribution','teamCount','submissionCount','trackSubmissions','aiTools','techStacks']):
         c=r.check('单独配置公开项'+metric,'PUT',base+'/config',A,{'publicMetrics':[metric],'version':c['version']})
         r.check('公开响应仅包含'+field,'GET',base,verify=lambda d,f=field:set(d['metrics'])=={f})
     c=r.check('取消全部公开统计项','PUT',base+'/config',A,{'publicMetrics':[],'version':c['version']})
@@ -227,6 +253,7 @@ def main():
     parser.add_argument('--base-url',default='http://127.0.0.1:18084')
     parser.add_argument('--mysql-container',default='mysql')
     parser.add_argument('--database',required=True)
+    parser.add_argument('--counts-only',action='store_true',help='仅验证公开总数与配置权限，不访问对象存储')
     parser.add_argument('--result',default='reports/showcase-dashboard-api-results.json')
     parser.add_argument('--report',default='reports/showcase-dashboard-api-report.html')
     args=parser.parse_args()
@@ -245,6 +272,12 @@ def main():
     Path(args.result).write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
     render_report(report,Path(args.report))
     p=Path(args.report); html=p.read_text().replace('已报名赛事列表 API 验证报告','风采墙与数据面板 API 验证报告').replace('外部 Python 客户端通过真实 Spring Boot HTTP 接口验证当前学生的报名筛选、分页排序、身份隔离与参数校验。','外部 Python 客户端验证风采墙发布与文件权限、公开统计项配置、管理面板、结构化标签和版本兼容。').replace('学生通过 HTTP 注册；赛事与报名关系为隔离夹具。','学生通过 HTTP 注册；赛事、历史轮次及异常边界由隔离 SQL 准备；展示文件使用测试对象存储上传并核对内容。')
+    if args.counts_only:
+        html=html.replace('风采墙与数据面板 API 验证报告','公开面板总数 API 验证报告').replace(
+            '外部 Python 客户端验证风采墙发布与文件权限、公开统计项配置、管理面板、结构化标签和版本兼容。',
+            '外部 Python 客户端验证参赛选手、参赛队伍、提交作品总数，以及公开配置、权限、零值、赛事隔离和跨轮次版本去重。').replace(
+            '学生通过 HTTP 注册；赛事、历史轮次及异常边界由隔离 SQL 准备；展示文件使用测试对象存储上传并核对内容。',
+            '学生通过 HTTP 注册，赛事和历史作品由隔离 SQL 准备；新轮次及新版本通过 HTTP 提交，本次不访问对象存储。')
     p.write_text(html)
     print(f"passed={report['passed']} failed={report['failed']} total={report['total']} error={error}")
     if error or report['failed']: raise SystemExit(1)

@@ -3213,6 +3213,7 @@ components:
       - PARTICIPANT_COUNT
       - CAMPUS_DISTRIBUTION
       - TEAM_COUNT
+      - SUBMISSION_COUNT
       - TRACK_SUBMISSIONS
       - AI_TOOLS
       - TECH_STACKS
@@ -3349,7 +3350,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PublicMetric'
-          maxItems: 6
+          maxItems: 7
           uniqueItems: true
         version:
           type: integer
@@ -3804,6 +3805,7 @@ components:
           type: integer
           format: int64
           minimum: 0
+          description: 当前本赛事参赛选手数，按报名用户去重，包含未组队者。
         campusDistribution:
           type: array
           items:
@@ -3830,6 +3832,12 @@ components:
           type: integer
           format: int64
           minimum: 0
+          description: 当前本赛事参赛队伍数，包含已淘汰队伍。
+        submissionCount:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 本赛事提交作品总数，按至少提交过一次的队伍去重；多轮提交、修改和补交不重复计数，不要求已发布到风采墙。
         trackSubmissions:
           type: array
           items:
@@ -3854,7 +3862,7 @@ components:
         techStacks:
           $ref: '#/components/schemas/WordCloudVO'
       additionalProperties: false
-      description: Public只包含所选字段，未公开字段完全省略；Admin返回全部六项。报名人数基于当前registration，校区来自当前student资料；八个校区及未知分类均保留。赛道作品数按有提交的team去重，空赛道为0。相关分布数据可以推算总数。
+      description: Public只包含所选字段，未公开字段完全省略；Admin返回全部七项。报名人数基于当前registration，校区来自当前student资料；八个校区及未知分类均保留。提交作品总数及赛道作品数按有提交的team去重，无提交时为0。相关分布数据可以推算总数。
     PublicDashboardVO:
       type: object
       properties:

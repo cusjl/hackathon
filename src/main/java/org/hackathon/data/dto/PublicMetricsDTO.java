@@ -11,7 +11,7 @@ import java.util.List;
 @Data
 public class PublicMetricsDTO {
     @NotNull
-    @Size(max = 6)
+    @Size(max = 7)
     private List<@NotNull PublicMetric> publicMetrics;
 
     @NotNull

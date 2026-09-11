@@ -156,6 +156,7 @@ public class DashboardService {
                 case PARTICIPANT_COUNT ->
                         result.put("participantCount", data.participants(eventId));
                 case TEAM_COUNT -> result.put("teamCount", data.teams(eventId));
+                case SUBMISSION_COUNT -> result.put("submissionCount", data.submissions(eventId));
                 case TRACK_SUBMISSIONS ->
                         result.put("trackSubmissions", data.trackSubmissions(eventId));
                 case CAMPUS_DISTRIBUTION -> result.put("campusDistribution", campuses(eventId));
