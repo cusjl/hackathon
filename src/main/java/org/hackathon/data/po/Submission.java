@@ -1,6 +1,8 @@
 package org.hackathon.data.po;
 
-import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.extension.handlers.Jackson3TypeHandler;
+import java.util.List;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.Version;
 import lombok.AllArgsConstructor;
@@ -16,6 +18,7 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@TableName(autoResultMap = true)
 public class Submission {
     @TableId(type = IdType.AUTO)
     private Integer submissionId;
@@ -31,6 +34,10 @@ public class Submission {
     private String demoUrl;
     private String introMd;
     private String declaration;
+    @TableField(typeHandler = Jackson3TypeHandler.class, updateStrategy = FieldStrategy.ALWAYS)
+    private List<String> aiTools;
+    @TableField(typeHandler = Jackson3TypeHandler.class, updateStrategy = FieldStrategy.ALWAYS)
+    private List<String> techStacks;
     private SubmissionStatus status;
     //当前版本号，v1 起递增
     private Integer versionNo;
@@ -57,6 +64,8 @@ public class Submission {
         snapshot.setDemoUrl(demoUrl);
         snapshot.setIntroMd(introMd);
         snapshot.setDeclaration(declaration);
+        snapshot.setAiTools(aiTools);
+        snapshot.setTechStacks(techStacks);
         return snapshot;
     }
 
@@ -74,6 +83,8 @@ public class Submission {
         demoUrl = snapshot.getDemoUrl();
         introMd = snapshot.getIntroMd();
         declaration = snapshot.getDeclaration();
+        aiTools = snapshot.getAiTools();
+        techStacks = snapshot.getTechStacks();
     }
 
     /**

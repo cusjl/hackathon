@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.hackathon.mapper.DashboardMapper">
+  <!-- 每队只取最近提交轮次的当前版本，不因初赛、决赛、补交重复计数。 -->
+  <sql id="representatives">
+    WITH ranked AS (
+      SELECT s.*, ROW_NUMBER() OVER(PARTITION BY s.team_id ORDER BY p.submit_beg DESC,p.phase_id DESC) AS rn
+      FROM submission s JOIN phase p ON p.phase_id=s.phase_id JOIN track t ON t.track_id=p.track_id
+      WHERE t.event_id=#{eventId}
+    ), representative AS (SELECT * FROM ranked WHERE rn=1)
+  </sql>
+  <sql id="tags"><choose><when test="ai">ai_tools</when><otherwise>tech_stacks</otherwise></choose></sql>
+  <select id="tagCoverage" resultType="map">
+    <include refid="representatives"/>
+    SELECT COUNT(*) AS totalProjects, COUNT(<include refid="tags"/>) AS reportedProjects FROM representative
+  </select>
+  <select id="words" resultType="map">
+    <include refid="representatives"/>
+    SELECT jt.name,COUNT(DISTINCT s.team_id) AS count FROM representative s,
+    JSON_TABLE(COALESCE(<include refid="tags"/>,JSON_ARRAY()), '$[*]' COLUMNS(name VARCHAR(50) PATH '$')) jt
+    GROUP BY jt.name ORDER BY count DESC,jt.name ASC
+  </select>
+  <select id="registrationSummary" resultType="map">
+    SELECT COUNT(*) AS participants,
+      COALESCE(SUM(team_id IS NOT NULL),0) AS teamedParticipants,
+      COALESCE(SUM(team_id IS NULL),0) AS unteamedParticipants,
+      (SELECT COUNT(*) FROM team WHERE event_id=#{eventId}) AS teams,
+      (SELECT COUNT(*) FROM team t JOIN event e ON e.event_id=t.event_id
+       WHERE t.event_id=#{eventId} AND (SELECT COUNT(*) FROM registration r WHERE r.team_id=t.team_id)&lt;COALESCE(e.team_min_size,1)) AS underfilledTeams
+    FROM registration WHERE event_id=#{eventId}
+  </select>
+  <!-- 首轮名单可从冻结后的队伍得到；后续轮次没有历史参赛名单，只提供已知队伍下界。 -->
+  <sql id="firstPhase">
+    NOT EXISTS(SELECT 1 FROM phase earlier WHERE earlier.track_id=p.track_id AND
+      (earlier.submit_beg&lt;p.submit_beg OR (earlier.submit_beg=p.submit_beg AND earlier.phase_id&lt;p.phase_id)))
+  </sql>
+  <sql id="eligible">
+    (<include refid="firstPhase"/> OR tm.current_phase_id=p.phase_id OR s.submission_id IS NOT NULL)
+  </sql>
+  <select id="phases" resultType="map">
+    SELECT p.phase_id AS phaseId,p.name AS phaseName,t.track_id AS trackId,t.name AS trackName,
+      p.submit_beg AS submitBeg,p.submit_end AS submitEnd,p.review_end AS reviewEnd,
+      (<include refid="firstPhase"/>) AS denominatorAvailable,
+      (SELECT COUNT(*) FROM team tm LEFT JOIN submission s ON s.team_id=tm.team_id AND s.phase_id=p.phase_id
+       WHERE tm.track_id=t.track_id AND <include refid="eligible"/>) AS knownExpectedTeams,
+      (SELECT COUNT(*) FROM submission s WHERE s.phase_id=p.phase_id) AS submittedTeams,
+      (SELECT COUNT(*) FROM submission s WHERE s.phase_id=p.phase_id AND NOT EXISTS(
+         SELECT 1 FROM review_assignment a WHERE a.submission_id=s.submission_id AND a.status IN(0,1))) AS unassignedWorks,
+      (SELECT COUNT(*) FROM review_assignment a WHERE a.phase_id=p.phase_id AND a.status=0) AS pendingTasks,
+      (SELECT COUNT(*) FROM review_assignment a WHERE a.phase_id=p.phase_id AND a.status=1) AS doneTasks
+    FROM phase p JOIN track t ON t.track_id=p.track_id WHERE t.event_id=#{eventId} ORDER BY t.track_id,p.submit_beg,p.phase_id
+  </select>
+  <select id="judges" resultType="map">
+    SELECT a.phase_id AS phaseId,p.name AS phaseName,a.judge_id AS judgeId,u.name AS judgeName,
+      SUM(a.status=0) AS pending,SUM(a.status=1) AS done,SUM(a.status IN(0,1)) AS total,
+      SUM(a.status=0 AND p.review_end&lt;#{now}) AS overdue
+    FROM review_assignment a JOIN user u ON u.user_id=a.judge_id JOIN phase p ON p.phase_id=a.phase_id
+    JOIN track t ON t.track_id=p.track_id WHERE t.event_id=#{eventId}
+    GROUP BY a.phase_id,p.name,a.judge_id,u.name ORDER BY a.phase_id,a.judge_id
+  </select>
+  <sql id="unreplaced">
+    a.status=2 AND NOT EXISTS(SELECT 1 FROM review_assignment next WHERE next.source_assignment_id=a.assignment_id)
+  </sql>
+  <sql id="expiredFlag">
+    ((f.status=0 AND f.supplement_end&lt;=#{now}) OR
+     (f.status=2 AND f.close_reason='补交窗口已到期，系统自动关闭'))
+  </sql>
+  <select id="workSummary" resultType="map">
+    SELECT
+      (SELECT COUNT(*) FROM review_assignment a JOIN phase p ON p.phase_id=a.phase_id JOIN track t ON t.track_id=p.track_id WHERE t.event_id=#{eventId} AND <include refid="unreplaced"/>) AS unreplacedRecusals,
+      (SELECT COUNT(*) FROM review_flag f JOIN phase p ON p.phase_id=f.phase_id JOIN track t ON t.track_id=p.track_id WHERE t.event_id=#{eventId} AND f.status=0 AND f.supplement_end&gt;#{now}) AS openFlags,
+      (SELECT COUNT(*) FROM review_flag f JOIN phase p ON p.phase_id=f.phase_id JOIN track t ON t.track_id=p.track_id WHERE t.event_id=#{eventId} AND <include refid="expiredFlag"/>) AS expiredFlags
+  </select>
+  <select id="details" resultType="map">
+    <choose>
+      <when test="kind.name() == 'UNTEAMED'">
+        SELECT r.user_id AS userId,u.name,r.track_id AS trackId FROM registration r JOIN user u ON u.user_id=r.user_id
+        WHERE r.event_id=#{eventId} AND r.team_id IS NULL ORDER BY r.user_id
+      </when>
+      <when test="kind.name() == 'UNDERFILLED'">
+        SELECT tm.team_id AS teamId,tm.name,tm.track_id AS trackId,
+          (SELECT COUNT(*) FROM registration r WHERE r.team_id=tm.team_id) AS members
+        FROM team tm JOIN event e ON e.event_id=tm.event_id WHERE tm.event_id=#{eventId}
+          AND (SELECT COUNT(*) FROM registration r WHERE r.team_id=tm.team_id)&lt;COALESCE(e.team_min_size,1) ORDER BY tm.team_id
+      </when>
+      <when test="kind.name() == 'SUBMITTED' or kind.name() == 'MISSING_SUBMISSION' or kind.name() == 'UNASSIGNED'">
+        SELECT tm.team_id AS teamId,tm.name,p.phase_id AS phaseId,s.submission_id AS submissionId
+        FROM phase p JOIN track t ON t.track_id=p.track_id JOIN team tm ON tm.track_id=t.track_id
+        LEFT JOIN submission s ON s.team_id=tm.team_id AND s.phase_id=p.phase_id
+        WHERE t.event_id=#{eventId} AND p.phase_id=#{phaseId}
+        <choose>
+          <when test="kind.name() == 'SUBMITTED'">AND s.submission_id IS NOT NULL</when>
+          <when test="kind.name() == 'MISSING_SUBMISSION'">AND <include refid="eligible"/> AND s.submission_id IS NULL</when>
+          <otherwise>AND s.submission_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM review_assignment a WHERE a.submission_id=s.submission_id AND a.status IN(0,1))</otherwise>
+        </choose>
+        ORDER BY tm.team_id
+      </when>
+      <when test="kind.name() == 'PENDING_REVIEW' or kind.name() == 'UNREPLACED_RECUSED'">
+        SELECT a.assignment_id AS assignmentId,a.phase_id AS phaseId,a.submission_id AS submissionId,
+          a.judge_id AS judgeId,u.name AS judgeName,p.review_end AS reviewEnd
+        FROM review_assignment a JOIN user u ON u.user_id=a.judge_id JOIN phase p ON p.phase_id=a.phase_id JOIN track t ON t.track_id=p.track_id
+        WHERE t.event_id=#{eventId}
+        <if test="phaseId != null">AND p.phase_id=#{phaseId}</if>
+        <choose><when test="kind.name() == 'PENDING_REVIEW'">AND a.status=0</when><otherwise>AND <include refid="unreplaced"/></otherwise></choose>
+        ORDER BY a.assignment_id
+      </when>
+      <otherwise>
+        SELECT f.flag_id AS flagId,f.phase_id AS phaseId,f.submission_id AS submissionId,f.description,
+          f.supplement_end AS supplementEnd,f.status,f.close_reason AS closeReason
+        FROM review_flag f JOIN phase p ON p.phase_id=f.phase_id JOIN track t ON t.track_id=p.track_id
+        WHERE t.event_id=#{eventId}
+        <if test="phaseId != null">AND p.phase_id=#{phaseId}</if>
+        <choose><when test="kind.name() == 'OPEN_FLAGS'">AND f.status=0 AND f.supplement_end&gt;#{now}</when><otherwise>AND <include refid="expiredFlag"/></otherwise></choose>
+        ORDER BY f.flag_id
+      </otherwise>
+    </choose>
+  </select>
+</mapper>

@@ -1,6 +1,7 @@
 package org.hackathon.data.po;
 
 import lombok.Data;
+import java.util.List;
 
 /**
  * 作品内容快照，字段与 {@link SubmissionConfig} 中的提交项一一对应。
@@ -28,4 +29,6 @@ public class SubmissionSnapshot {
     private String introMd;
     //开源及 AI 声明
     private String declaration;
+    private List<String> aiTools;
+    private List<String> techStacks;
 }

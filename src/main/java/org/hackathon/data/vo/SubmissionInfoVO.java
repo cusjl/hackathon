@@ -1,6 +1,7 @@
 package org.hackathon.data.vo;
 
 import lombok.Data;
+import java.util.List;
 import org.hackathon.data.enums.SubmissionStatus;
 import org.hackathon.data.po.SubmissionConfig;
 
@@ -41,5 +42,7 @@ public class SubmissionInfoVO {
     private String demoUrl;
     private String introMd;
     private String declaration;
+    private List<String> aiTools;
+    private List<String> techStacks;
     private Integer version;
 }

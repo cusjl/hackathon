@@ -349,6 +349,10 @@ public class ReviewAssignService {
      */
     private ReviewAssignment insert(Phase phase, Integer submissionId, Integer judgeId,
                                     AssignSource source, Integer assignerId, Integer sourceAssignmentId) {
+        if (sourceAssignmentId == null) {
+            ReviewAssignment recusal = assignmentMapper.lockUnreplacedRecusal(submissionId);
+            if (recusal != null) sourceAssignmentId = recusal.getAssignmentId();
+        }
         LocalDateTime now = LocalDateTime.now();
         ReviewAssignment po = new ReviewAssignment(null, phase.getPhaseId(), submissionId, judgeId,
                 ReviewStatus.PENDING, source, assignerId, sourceAssignmentId, null, null, null,

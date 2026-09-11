@@ -36,6 +36,7 @@ public class SubmissionService {
     private static final Pattern URL = Pattern.compile("^https?://\\S+$");
 
     private final SubmissionMapper submissionMapper;
+    private final SubmissionTagService tagService;
     private final SubmissionVersionMapper versionMapper;
     private final FileObjectMapper fileObjectMapper;
     private final UserMapper userMapper;
@@ -54,10 +55,11 @@ public class SubmissionService {
         if (ctx.event().getTeamMinSize() != null && team.getSize() < ctx.event().getTeamMinSize()) {
             throw new BusinessException(ResultCode.TEAM_TOO_SMALL);
         }
+        Submission submission = submissionMapper.selectByTeamPhase(team.getTeamId(), phase.getPhaseId());
         SubmissionSnapshot snapshot = verify(dto, phase, team);
+        applyTags(dto, snapshot, submission);
 
         LocalDateTime now = LocalDateTime.now();
-        Submission submission = submissionMapper.selectByTeamPhase(team.getTeamId(), phase.getPhaseId());
         if (submission == null) {
             submission = new Submission();
             submission.setPhaseId(phase.getPhaseId());
@@ -110,6 +112,7 @@ public class SubmissionService {
             throw new BusinessException(ResultCode.PARAM_ERROR, "版本号不能为空");
         }
         SubmissionSnapshot snapshot = verify(dto, phase, team);
+        applyTags(dto, snapshot, submission);
 
         LocalDateTime now = LocalDateTime.now();
         submission.setVersion(dto.getVersion());
@@ -271,6 +274,11 @@ public class SubmissionService {
         return snapshot;
     }
 
+    private void applyTags(SubmitWorkDTO dto, SubmissionSnapshot snapshot, Submission previous) {
+        snapshot.setAiTools(tagService.normalize(dto.getAiTools(), previous == null ? null : previous.getAiTools()));
+        snapshot.setTechStacks(tagService.normalize(dto.getTechStacks(), previous == null ? null : previous.getTechStacks()));
+    }
+
     private boolean on(Boolean flag) {
         return Boolean.TRUE.equals(flag);
     }
@@ -380,6 +388,8 @@ public class SubmissionService {
         vo.setDemoUrl(submission.getDemoUrl());
         vo.setIntroMd(submission.getIntroMd());
         vo.setDeclaration(submission.getDeclaration());
+        vo.setAiTools(submission.getAiTools());
+        vo.setTechStacks(submission.getTechStacks());
         vo.setVersion(submission.getVersion());
         return vo;
     }

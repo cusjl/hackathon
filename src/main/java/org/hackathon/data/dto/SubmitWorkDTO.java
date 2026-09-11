@@ -3,6 +3,8 @@ package org.hackathon.data.dto;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import java.util.List;
+import jakarta.validation.constraints.NotBlank;
 
 /**
  * 提交/重新提交作品。
@@ -28,6 +30,11 @@ public class SubmitWorkDTO {
     private String demoUrl;
     private String introMd;
     private String declaration;
+    // 缺省/null 保留原值；[] 明确没有使用。与动态必填提交项独立。
+    @Size(max = 30)
+    private List<@NotBlank @Size(max = 50) String> aiTools;
+    @Size(max = 30)
+    private List<@NotBlank @Size(max = 50) String> techStacks;
     @Size(max = 200, message = "提交说明长度不能超过200个字符")
     private String changeLog;
     //乐观锁版本号，首次提交可不传

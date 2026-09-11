@@ -3,6 +3,7 @@ package org.hackathon.mapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
 import org.hackathon.data.enums.ReviewStatus;
 import org.hackathon.data.po.ReviewAssignment;
 
@@ -10,6 +11,12 @@ import java.util.List;
 
 @Mapper
 public interface ReviewAssignmentMapper extends BaseMapper<ReviewAssignment> {
+
+    /** 人工补派也关联原回避任务，管理面板才能准确判断其是否已有接手任务。 */
+    @Select("SELECT a.* FROM review_assignment a WHERE a.submission_id=#{submissionId} AND a.status=2 "
+            + "AND NOT EXISTS(SELECT 1 FROM review_assignment n WHERE n.source_assignment_id=a.assignment_id) "
+            + "ORDER BY a.assignment_id LIMIT 1 FOR UPDATE")
+    ReviewAssignment lockUnreplacedRecusal(Integer submissionId);
 
     /**
      * 评委在某作品上仍然持有的任务（待评或已评），回避/移交后查不到
