@@ -1,8 +1,49 @@
 # 数据面板接口与统计口径
 
-数据面板按单场赛事统计，独立于风采墙。Public 展示汇总数据，Admin 提供管理概况及对应明细。
+数据面板独立于风采墙，同时支持全局和赛事级 Public 统计。Admin 继续按赛事提供管理概况及对应明细。两套公开配置独立，原有赛事接口和数据保持兼容。
 
-## 配置可公开的统计项
+## 全局公开面板
+
+- `GET /dashboard`：游客可读，全平台所有赛事汇总，无需 eventId。
+- `GET/PUT /dashboard/config`：仅超级管理员可操作全局公开配置。
+- `GET /dashboard/event/{eventId}` 和赛事级配置接口继续保留，由下文说明。
+
+全局公开字段与赛事级一致，共七项，计算范围扩展为全平台：
+
+| 字段 | 全局统计口径 |
+|---|---|
+| `participantCount` | 全平台已报名选手按 userId 去重，同一人报名多场赛事只计1人，包含未组队者 |
+| `teamCount` | 全平台队伍数，按 teamId 计数，包含已淘汰队伍；不同赛事分别创建的队伍分别计数 |
+| `submissionCount` | 全平台提交过作品的队伍数，同队多轮提交、修改或补交只计1件 |
+| `campusDistribution` | 与选手总数使用相同的去重人群，按当前校区分组；包含八校区及未知分类 |
+| `trackSubmissions` | 全平台各赛道已提交队伍数，每项附 eventId、eventName、trackId、trackName，区分同名赛道 |
+| `aiTools`、`techStacks` | 全平台每队最新提交轮次的当前作品版本所填报的工具和技术栈，保留填报覆盖率 |
+
+全局配置同样使用 `publicMetrics` 全量列表和 `version`。首次 version=0，后续使用读取的当前版本；`[]` 关闭全部全局公开项，未选字段完全省略。赛事管理员不能修改全局配置，超级管理员可以管理两种配置。
+
+例如全局配置选择三个总数后，`GET /dashboard` 的 data 为：
+
+```json
+{
+  "generatedAt": "2026-09-14T12:00:00",
+  "publicMetrics": ["PARTICIPANT_COUNT", "TEAM_COUNT", "SUBMISSION_COUNT"],
+  "metrics": {"participantCount": 120, "teamCount": 35, "submissionCount": 28}
+}
+```
+
+全局响应顶层没有 eventId、eventName。查询不按 eventId 筛选；查询单场赛事请继续使用原赛事路径。全局公开项与赛事公开项互不影响，例如关闭赛事面板某个字段，不会关闭已单独配置公开的全局字段。
+
+`V12__global_dashboard.sql` 新增单例 `global_dashboard_config`，初始公开项为空。原 `dashboard_config` 继续读写，不合并、不覆盖；不修改已应用的 V1～V11。升级后由超级管理员按需设置全局公开项。
+
+全局验证脚本为 `scripts/global_dashboard_api_integration_test.py`，要求全新专用隔离库中没有报名、队伍、作品或赛道数据；脚本不清空数据、不访问对象存储：
+
+```bash
+python3 scripts/global_dashboard_api_integration_test.py \
+  --base-url http://127.0.0.1:18084 \
+  --database hackathon_global_dashboard_it_20260914
+```
+
+## 赛事级公开配置
 
 使用 `GET/PUT /dashboard/event/{eventId}/config`，仅本赛事管理员或超管可以操作。没有整体公开布尔开关。
 

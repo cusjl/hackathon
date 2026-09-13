@@ -1,12 +1,40 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="org.hackathon.mapper.DashboardMapper">
+  <select id="participants" resultType="long">
+    SELECT COUNT(DISTINCT user_id) FROM registration
+    <where><if test="eventId != null">event_id=#{eventId}</if></where>
+  </select>
+  <select id="teams" resultType="long">
+    SELECT COUNT(*) FROM team
+    <where><if test="eventId != null">event_id=#{eventId}</if></where>
+  </select>
+  <select id="submissions" resultType="long">
+    SELECT COUNT(DISTINCT s.team_id) FROM submission s
+    JOIN phase p ON p.phase_id=s.phase_id JOIN track t ON t.track_id=p.track_id
+    <where><if test="eventId != null">t.event_id=#{eventId}</if></where>
+  </select>
+  <select id="campuses" resultType="map">
+    SELECT s.campus,COUNT(DISTINCT r.user_id) AS count FROM registration r
+    LEFT JOIN student s ON s.user_id=r.user_id
+    <where><if test="eventId != null">r.event_id=#{eventId}</if></where>
+    GROUP BY s.campus
+  </select>
+  <select id="trackSubmissions" resultType="map">
+    SELECT <if test="eventId == null">e.event_id AS eventId,e.name AS eventName,</if>
+      t.track_id AS trackId,t.name AS trackName,
+      COUNT(DISTINCT s.team_id) AS count
+    FROM track t JOIN event e ON e.event_id=t.event_id
+    LEFT JOIN phase p ON p.track_id=t.track_id LEFT JOIN submission s ON s.phase_id=p.phase_id
+    <where><if test="eventId != null">t.event_id=#{eventId}</if></where>
+    GROUP BY e.event_id,e.name,t.track_id,t.name ORDER BY e.event_id,t.track_id
+  </select>
   <!-- 每队只取最近提交轮次的当前版本，不因初赛、决赛、补交重复计数。 -->
   <sql id="representatives">
     WITH ranked AS (
       SELECT s.*, ROW_NUMBER() OVER(PARTITION BY s.team_id ORDER BY p.submit_beg DESC,p.phase_id DESC) AS rn
       FROM submission s JOIN phase p ON p.phase_id=s.phase_id JOIN track t ON t.track_id=p.track_id
-      WHERE t.event_id=#{eventId}
+      <where><if test="eventId != null">t.event_id=#{eventId}</if></where>
     ), representative AS (SELECT * FROM ranked WHERE rn=1)
   </sql>
   <sql id="tags"><choose><when test="ai">ai_tools</when><otherwise>tech_stacks</otherwise></choose></sql>

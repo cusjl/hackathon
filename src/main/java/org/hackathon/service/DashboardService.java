@@ -25,10 +25,51 @@ import java.util.*;
 public class DashboardService {
     private final DashboardMapper data;
     private final DashboardConfigMapper configs;
+    private final GlobalDashboardConfigMapper globalConfigs;
     private final PhaseMapper phases;
     private final TrackMapper tracks;
     private static final List<String> CAMPUSES =
             List.of("中心校区", "洪家楼校区", "趵突泉校区", "千佛山校区", "软件园校区", "兴隆山校区", "威海校区", "青岛校区");
+
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public Map<String, Object> globalConfig() {
+        return globalConfiguration();
+    }
+
+    @Transactional
+    public Map<String, Object> saveGlobalConfig(PublicMetricsDTO dto) {
+        globalConfigs.lockConfig();
+        GlobalDashboardConfig config = globalConfigs.selectById(1);
+        if (!Objects.equals(dto.getVersion(), config.getVersion()))
+            throw new BusinessException(ResultCode.RESOURCE_UPDATED);
+        if (new HashSet<>(dto.getPublicMetrics()).size() != dto.getPublicMetrics().size())
+            throw new BusinessException(ResultCode.PARAM_ERROR, "公开统计项不能重复");
+        config.setPublicMetrics(dto.getPublicMetrics().stream().sorted().toList());
+        config.setUpdateTime(LocalDateTime.now());
+        if (globalConfigs.updateById(config) == 0)
+            throw new BusinessException(ResultCode.RESOURCE_UPDATED);
+        return globalConfiguration();
+    }
+
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public Map<String, Object> globalPublicDashboard() {
+        GlobalDashboardConfig config = globalConfigs.selectById(1);
+        List<PublicMetric> selected = config.getPublicMetrics();
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("generatedAt", LocalDateTime.now());
+        out.put("publicMetrics", selected);
+        out.put("metrics", metrics(null, selected));
+        return out;
+    }
+
+    private Map<String, Object> globalConfiguration() {
+        GlobalDashboardConfig config = globalConfigs.selectById(1);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("publicMetrics", config.getPublicMetrics());
+        out.put("version", config.getVersion());
+        out.put("updateTime", config.getUpdateTime());
+        return out;
+    }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public Map<String, Object> config(Context ctx) {

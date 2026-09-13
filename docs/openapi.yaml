@@ -2052,6 +2052,68 @@ paths:
       - EVENT_ADMIN
       description: SUBMITTED/MISSING_SUBMISSION/UNASSIGNED必须提供phaseId；UNTEAMED/UNDERFILLED不接受phaseId；其他kind可按轮次筛选。任何phaseId必须属于路径赛事。
 
+  /dashboard:
+    get:
+      tags:
+      - 数据面板
+      operationId: getPublicGlobalDashboard
+      summary: 公开全局统计
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GlobalPublicDashboardVOResult'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      description: 汇总所有赛事，不需要eventId，顶层不返回赛事信息。只查询和返回全局publicMetrics选中的统计项；默认publicMetrics=[]、metrics={}。与原GET /dashboard/event/{eventId}并存，配置相互独立。
+  /dashboard/config:
+    get:
+      tags:
+      - 数据面板
+      operationId: getGlobalDashboardConfig
+      summary: 读取全局公开统计项配置
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GlobalDashboardConfigVOResult'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      security:
+      - bearerAuth: []
+      x-required-roles:
+      - SUPER
+      description: 独立于赛事级配置，仅超级管理员可操作。初始version=0；全量替换publicMetrics，[]关闭全部全局公开项，更新须使用当前版本。
+    put:
+      tags:
+      - 数据面板
+      operationId: updateGlobalDashboardConfig
+      summary: 设置全局公开统计项
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GlobalDashboardConfigVOResult'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublicMetricsDTO'
+      security:
+      - bearerAuth: []
+      x-required-roles:
+      - SUPER
+      description: 独立于赛事级配置，仅超级管理员可操作。初始version=0；全量替换publicMetrics，[]关闭全部全局公开项，更新须使用当前版本。
+
 components:
   securitySchemes:
     bearerAuth:
@@ -4288,3 +4350,126 @@ components:
         properties:
           data:
             $ref: '#/components/schemas/DashboardDetailPage'
+
+    GlobalDashboardConfigVO:
+      type: object
+      properties:
+        publicMetrics:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicMetric'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        updateTime:
+          oneOf:
+          - $ref: '#/components/schemas/LocalDateTime'
+          - type: 'null'
+      required:
+      - publicMetrics
+      - version
+      - updateTime
+      description: 全局单例配置，仅超级管理员可读写，与赛事级配置独立。
+    GlobalPublicDashboardVO:
+      type: object
+      properties:
+        generatedAt:
+          $ref: '#/components/schemas/LocalDateTime'
+        publicMetrics:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicMetric'
+        metrics:
+          $ref: '#/components/schemas/GlobalDashboardMetrics'
+      additionalProperties: false
+      required:
+      - generatedAt
+      - publicMetrics
+      - metrics
+    GlobalDashboardMetrics:
+      type: object
+      properties:
+        participantCount:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 全平台已报名选手按userId去重，同一人报名多场赛事只计1人，包含未组队者。
+        campusDistribution:
+          type: array
+          items:
+            type: object
+            properties:
+              campus:
+                type: string
+              count:
+                type: integer
+                format: int64
+                minimum: 0
+              ratio:
+                type:
+                - number
+                - 'null'
+                minimum: 0
+                maximum: 1
+                description: 0至1的比例，分母为0或无法确定时为null
+            required:
+            - campus
+            - count
+            - ratio
+        teamCount:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 全平台队伍数，按teamId计数，包含已淘汰队伍。
+        submissionCount:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 全平台提交过作品的队伍数，按teamId去重，多轮提交、修改和补交只计一次。
+        trackSubmissions:
+          type: array
+          items:
+            type: object
+            properties:
+              eventId:
+                type: integer
+                format: int32
+              eventName:
+                type: string
+              trackId:
+                type: integer
+                format: int64
+                minimum: 0
+              trackName:
+                type: string
+              count:
+                type: integer
+                format: int64
+                minimum: 0
+            required:
+            - eventId
+            - eventName
+            - trackId
+            - trackName
+            - count
+        aiTools:
+          $ref: '#/components/schemas/WordCloudVO'
+        techStacks:
+          $ref: '#/components/schemas/WordCloudVO'
+      additionalProperties: false
+      description: 汇总所有赛事且只返回选中字段。选手数和校区分布均按userId跨赛事去重，校区取当前资料；词云按每支队伍最新提交轮次的当前版本统计。赛道附所属赛事，不合并不同赛事的同名赛道。空数据保留0/空数组；未公开字段省略。
+    GlobalDashboardConfigVOResult:
+      allOf:
+      - $ref: '#/components/schemas/ResultBase'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/GlobalDashboardConfigVO'
+    GlobalPublicDashboardVOResult:
+      allOf:
+      - $ref: '#/components/schemas/ResultBase'
+      - type: object
+        properties:
+          data:
+            $ref: '#/components/schemas/GlobalPublicDashboardVO'

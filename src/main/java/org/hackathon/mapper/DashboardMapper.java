@@ -11,30 +11,16 @@ import java.util.*;
 
 @Mapper
 public interface DashboardMapper {
-    @Select("SELECT COUNT(*) FROM registration WHERE event_id=#{eventId}")
-    long participants(Integer eventId);
+    /** eventId为空时聚合全局；非空时供赛事管理员面板使用。 */
+    long participants(@Param("eventId") Integer eventId);
 
-    @Select("SELECT COUNT(*) FROM team WHERE event_id=#{eventId}")
-    long teams(Integer eventId);
+    long teams(@Param("eventId") Integer eventId);
 
-    /** 按赛事统计提交过作品的队伍数，跨轮次与版本去重。 */
-    @Select(
-            "SELECT COUNT(DISTINCT s.team_id) FROM submission s"
-                + " JOIN phase p ON p.phase_id=s.phase_id"
-                + " JOIN track t ON t.track_id=p.track_id WHERE t.event_id=#{eventId}")
-    long submissions(Integer eventId);
+    long submissions(@Param("eventId") Integer eventId);
 
-    @Select(
-            "SELECT s.campus, COUNT(*) AS count FROM registration r LEFT JOIN student s ON"
-                + " s.user_id=r.user_id WHERE r.event_id=#{eventId} GROUP BY s.campus")
-    List<Map<String, Object>> campuses(Integer eventId);
+    List<Map<String, Object>> campuses(@Param("eventId") Integer eventId);
 
-    @Select(
-            "SELECT t.track_id AS trackId,t.name AS trackName,COUNT(DISTINCT s.team_id) AS count"
-                + " FROM track t LEFT JOIN phase p ON p.track_id=t.track_id LEFT JOIN submission s"
-                + " ON s.phase_id=p.phase_id WHERE t.event_id=#{eventId} GROUP BY t.track_id,t.name"
-                + " ORDER BY t.track_id")
-    List<Map<String, Object>> trackSubmissions(Integer eventId);
+    List<Map<String, Object>> trackSubmissions(@Param("eventId") Integer eventId);
 
     Map<String, Object> tagCoverage(@Param("eventId") Integer eventId, @Param("ai") boolean ai);
 
