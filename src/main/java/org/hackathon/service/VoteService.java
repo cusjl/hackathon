@@ -100,6 +100,10 @@ public class VoteService {
             vo.setTeamId(submission.getTeamId());
             Team team = teams.get(submission.getTeamId());
             vo.setTeamName(team == null ? null : team.getName());
+            vo.setIntroMd(submission.getIntroMd());
+            vo.setTechStacks(submission.getTechStacks());
+            vo.setDemoUrl(submission.getDemoUrl());
+            vo.setVideoUrl(submission.getVideoUrl());
             vo.setVoteCount(counts.getOrDefault(submission.getSubmissionId(), 0L));
             vo.setVoted(ctx.isAuthenticated() ? votedIds.contains(submission.getSubmissionId()) : null);
             ranking.add(vo);

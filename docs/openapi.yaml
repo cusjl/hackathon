@@ -1539,7 +1539,7 @@ paths:
       tags: [投票]
       operationId: getVoteRanking
       summary: 获取本轮人气榜
-      description: 匿名可访问；登录时 voted 标记本人是否已投。未开启大众投票时返回空榜。
+      description: 匿名可访问；返回本轮全部作品（含零票作品）的队伍信息、作品介绍、技术栈、演示地址、视频外链及票数，不分页。按票数降序、同票按作品 ID 升序排列，排名连续编号。登录时 voted 标记本人是否已投。未开启大众投票时返回空榜。
       security: [{}, {bearerAuth: []}]
       responses:
         '200': {description: 获取成功, content: {application/json: {schema: {$ref: '#/components/schemas/VoteRankListResult'}}}}
@@ -3119,6 +3119,10 @@ components:
         submissionId: {type: integer, format: int32}
         teamId: {type: integer, format: int32}
         teamName: {type: string}
+        introMd: {type: [string, 'null'], description: 作品介绍，Markdown 格式}
+        techStacks: {type: [array, 'null'], items: {type: string}, description: 作品技术栈}
+        demoUrl: {type: [string, 'null'], description: 作品演示地址}
+        videoUrl: {type: [string, 'null'], description: 作品视频外链，不包含上传视频文件的下载地址}
         voteCount: {type: integer, format: int64}
         voted: {type: [boolean, 'null'], description: 匿名访问时为空}
     VoteStatusVO:
